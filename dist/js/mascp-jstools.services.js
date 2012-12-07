@@ -3053,7 +3053,7 @@ if (typeof module != 'undefined' && module.exports){
                 script.parentNode.removeChild(script);
             }
             callback.call(null,{ "cause" : { "status" : "" }, "message" : "Could not load data via script tag" } ,doc_id);
-        });
+        },false);
         window["cback"+doc_id] = function(dat) {
             delete window["cback"+doc_id];
             callback.call(null,null,parsedata(dat));
@@ -3063,7 +3063,7 @@ if (typeof module != 'undefined' && module.exports){
     var initing_auth = false;
     var waiting_callbacks = [];
 
-    authenticate = function(cback) {
+    authenticate = function(cback,noevent) {
         if (MASCP.GOOGLE_AUTH_TOKEN) {
             cback.call(null);
             return;
@@ -3082,7 +3082,13 @@ if (typeof module != 'undefined' && module.exports){
         var auth_settings = { client_id : MASCP.GOOGLE_CLIENT_ID, scope : scope, immediate : true };
         gapi.auth.authorize({immediate: true},function(){});
         initing_auth = true;
-        var user_action = event ? event.which : null;
+        var user_action = true;
+        if (noevent) {
+            user_action = false;
+        }
+        if (window.event) {
+            user_action = window.event ? window.event.which : null;
+        }
         setTimeout(function() {
         gapi.auth.authorize(auth_settings,function(result) {
             if (result && ! result.error) {
@@ -3173,7 +3179,7 @@ if (typeof module != 'undefined' && module.exports){
     var basic_get_document = get_document;
     get_document = function(doc,etag,callback) {
         if ( ! doc && callback ) {
-            authenticate(callback);
+            authenticate(callback,true);
             return;
         }
         if ( ! doc.match(/^spreadsheet/ ) ) {
