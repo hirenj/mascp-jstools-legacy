@@ -1749,7 +1749,8 @@ var SVGCanvas = SVGCanvas || (function() {
             html.appendChild(body);
             body.appendChild(content);
             fo.appendChild(html);
-            callout.setAttribute('transform','translate('+(x*RS)+','+((y+20)*RS)+')');
+            var scale = opts.height/15;
+            callout.setAttribute('transform','translate('+(x*RS)+','+((y+20)*RS)+') scale('+scale+')');
             callout.setHeight = setHeight;
             if ( ! opts.align ) {
                 var currVbox = parseFloat(this.getAttribute('viewBox').split(/\s+/)[2]);
@@ -1768,6 +1769,7 @@ var SVGCanvas = SVGCanvas || (function() {
                 poly.setAttribute('points', shifter > 0 ? "0,500 500,1000 0,1000" : "0,500 0,1000 -500,1000");
                 fo.setAttribute('transform', 'translate('+(shifter*opts.width*RS)+',0)');
             }
+            callout.setAttribute('height',(opts.height)*RS);
             return callout;
         };
 
@@ -3028,7 +3030,7 @@ var addCalloutToLayer = function(layerName,element,opts) {
         return;
     }
     var callout = canvas.callout(this._index+0.5,0.01,element,{'width' : (10*opts.width) || 100 ,'height': (opts.height * 10) || 100, 'align' : opts.align });
-    callout.setAttribute('height',this._renderer._RS*10);
+    callout.setHeight(opts.height*this._renderer._RS);
     this._renderer._canvas_callout_padding = Math.max(((10*opts.height) || 100),this._renderer._canvas_callout_padding||0);
     this._renderer._layer_containers[layerName].push(callout);
     callout.clear = function() {
