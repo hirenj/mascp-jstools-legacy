@@ -9790,6 +9790,9 @@ var addAnnotationToLayer = function(layerName,width,opts) {
             blob.offset = 0*height;
         } else {
             blob.offset = opts.offset;
+            if (opts.height) {
+                blob.offset = opts.offset / opts.height;
+            }
         }
 
         blob.height = height;
