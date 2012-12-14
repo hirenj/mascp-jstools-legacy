@@ -465,6 +465,9 @@ MASCP.SequenceRenderer.prototype._cleanSequence = function(sequence) {
 MASCP.SequenceRenderer.prototype.getAminoAcidsByPosition = function(indexes) {
     var sequence_els = this._sequence_els;
     return jQuery.map(indexes, function(index) {
+        if (index < 0) {
+            return null;
+        }
         return sequence_els[index-1];
     });
 };
@@ -1635,7 +1638,7 @@ var SVGCanvas = SVGCanvas || (function() {
                         points[0] = 0;
                     }
                     if (points[0] == max_x) {
-                        points[0] = (width)*RS;
+                        points[0] = a*2;
                     }
                     return points.join(",");
                 });
@@ -1807,6 +1810,7 @@ var SVGCanvas = SVGCanvas || (function() {
                 }
                 this.firstChild.setAttribute('transform','translate(-100,'+(top_offset*RS)+') rotate('+this.angle+',100,0)');
             };
+            result.container = container;
             return result;
         };
 
