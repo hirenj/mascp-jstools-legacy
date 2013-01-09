@@ -6307,6 +6307,9 @@ MASCP.ClustalRunner.prototype.setupSequenceRenderer = function(renderer) {
               }
             }
         }
+        renderer.zoom = 1;
+        renderer.refresh();
+
     };
 
     this.bind('resultReceived',function() {
