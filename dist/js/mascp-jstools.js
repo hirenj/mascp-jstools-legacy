@@ -6525,6 +6525,8 @@ MASCP.ClustalRunner.prototype.setupSequenceRenderer = function(renderer) {
                     result.addBoxOverlay = function(layername,width,fraction) {
                         elements_to_move.push(orig_functions['addBoxOverlay'].call(el,layername,Math.abs(self.result.calculatePositionForSequence(index,result.original_index+width) - el._index),fraction));
                         elements_to_move.slice(-1)[0].layer_idx = index;
+                        elements_to_move.slice(-1)[0].aa_width = width;
+                        elements_to_move.slice(-1)[0].aa = result.original_index;
                         return elements_to_move.slice(-1)[0];
                     };
                     result.addTextOverlay = function(layername,width,opts) {
@@ -8457,7 +8459,10 @@ var SVGCanvas = SVGCanvas || (function() {
             var a_circle = document.createElementNS(svgns,'circle');
             a_circle.setAttribute('cx', typeof x == 'string' ? x : x * RS);
             a_circle.setAttribute('cy', typeof y == 'string' ? y : y * RS);
-            a_circle.setAttribute('r', typeof radius == 'string' ? radius : radius * RS);        
+            a_circle.setAttribute('r', typeof radius == 'string' ? radius : radius * RS);
+            a_circle.move = function(new_x) {
+                a_circle.setAttribute('cx',new_x*RS);
+            };
             this.appendChild(a_circle);
             return a_circle;
         };
@@ -9823,6 +9828,7 @@ var addElementToLayer = function(layerName,opts) {
             tracer_marker.setAttribute('transform','translate('+((x-0.5)*renderer._RS)+','+matches[1]+') scale('+matches[2]+')');
         }
         tracer.move(x-0.5,0.05);
+        bobble.move(x-0.5);
     };
     return result;
 };
