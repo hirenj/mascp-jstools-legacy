@@ -9910,6 +9910,7 @@ var addTextToElement = function(layerName,width,opts) {
 
 var addShapeToElement = function(layerName,width,opts) {
     var canvas = this._renderer._canvas;
+    var renderer = this._renderer;
 
     if ( ! canvas ) {
         var orig_func = arguments.callee;
@@ -9954,6 +9955,14 @@ var addShapeToElement = function(layerName,width,opts) {
             shape.setAttribute('y', offset_val*height);
             shape.setAttribute('height',height);
             shape.setAttribute('stroke-width',this._orig_stroke_width/canvas.zoom);
+        };
+        shape.move = function(new_x,new_width) {
+            var transform_attr = this.getAttribute('transform');
+            var matches = /translate\(.*[,\s](.*)\)/.exec(transform_attr);
+            if (matches[1]) {
+                this.setAttribute('transform','translate('+(new_x*renderer._RS)+','+matches[1]+')');
+            }
+            this.setAttribute('width',new_width*renderer._RS);
         };
     }
 
