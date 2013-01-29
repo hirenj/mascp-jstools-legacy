@@ -1778,7 +1778,7 @@ var SVGCanvas = SVGCanvas || (function() {
             var html = document.createElementNS('http://www.w3.org/1999/xhtml','html');
             html.setAttribute('xmlns','http://www.w3.org/1999/xhtml');
             var body = document.createElementNS('http://www.w3.org/1999/xhtml','body');
-            body.style.fontSize = (15*RS) +'px';
+            body.style.fontSize = ((opts['font-size'] || 15)*RS) +'px';
             body.style.margin = (5*RS)+'px';
             body.style.height = opts.height*RS*10+'px';
             html.appendChild(body);
@@ -3137,7 +3137,7 @@ var addCalloutToLayer = function(layerName,element,opts) {
         log("Delaying rendering, waiting for sequence change");
         return;
     }
-    var callout = canvas.callout(this._index+0.5,0.01,element,{'width' : (10*opts.width) || 100 ,'height': (opts.height * 10) || 100, 'align' : opts.align });
+    var callout = canvas.callout(this._index+0.5,0.01,element,{'width' : (10*opts.width) || 100 ,'height': (opts.height * 10) || 100, 'align' : opts.align, 'font-size' : opts['font-size'] });
     callout.setHeight(opts.height*this._renderer._RS);
     this._renderer._canvas_callout_padding = Math.max(((10*opts.height) || 100),this._renderer._canvas_callout_padding||0);
     this._renderer._layer_containers[layerName].push(callout);
