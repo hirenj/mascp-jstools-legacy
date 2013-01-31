@@ -2479,9 +2479,14 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
         little_labels.hide();
 
         huge_labels.hide();
-
+        var zoom_status = null;
         var zoomchange = function() {
                if (this.zoom > 3.6) {
+                   if (zoom_status == 1) {
+                        return;
+                   }
+                   zoom_status = 1;
+
                    little_ticks.hide();
                    big_ticks.show();
                    big_ticks.attr({'stroke-width' : 0.05*RS+'pt', 'stroke' : '#999999', 'transform' : 'scale(1,0.1) translate(0,4500)' });
@@ -2493,6 +2498,11 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
                        this._visibleTracers().show();
                    }
                } else if (this.zoom > 1.8) {
+                   if (zoom_status == 2) {
+                        return;
+                   }
+                   zoom_status = 2;
+
                    axis.show();
                    big_ticks.show();
                    axis.attr({'stroke-width':0.5*RS+'pt'});
@@ -2508,6 +2518,11 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
                        this.tracers.hide();
                    }
                } else if (this.zoom > 0.2) {
+                   if (zoom_status == 3) {
+                        return;
+                   }
+                   zoom_status = 3;
+
                    if (this.tracers) {
                        this.tracers.hide();
                    }
@@ -2521,6 +2536,10 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
                    little_labels.hide();
                    huge_labels.hide();
                } else {
+                   if (zoom_status == 4) {
+                        return;
+                   }
+                   zoom_status = 4;
                    if (this.tracers) {
                        this.tracers.hide();
                    }
