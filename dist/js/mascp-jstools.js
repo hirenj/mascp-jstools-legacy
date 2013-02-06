@@ -2664,6 +2664,9 @@ if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
             var lines = text_data.split("\n");
             var data = [];
             for (var i = lines.length - 1; i >= 0; i-- ) {
+                if (lines[i].match(/^#/)) {
+                    continue;
+                }
                 data.push(lines[i].replace(/"/g,'').split(/\t/));
             }
             return data.reverse();
@@ -2674,9 +2677,14 @@ if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
                             if (data && typeof data == 'string') {
                                 var self = this;
                                 var rows = read_csv(data);
+                                var header_seen = false;
                                 self._raw_data = { 'data' : {} };
                                 rows.forEach(function(row) {
                                     if (row.length != 12) {
+                                        return;
+                                    }
+                                    if ( ! header_seen ) {
+                                        header_seen = true;
                                         return;
                                     }
                                     if ( ! self._raw_data.data[row[7]]) {
@@ -2692,15 +2700,6 @@ if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
                         });
 })();
 MASCP.CddRunner.SERVICE_URL = 'http://www.ncbi.nlm.nih.gov/Structure/bwrpsb/bwrpsb.cgi?';
-
-MASCP.CddRunner.hash = function(str){
-    var hash = 0;
-    for (i = 0; i < str.length; i++) {
-        char = str.charCodeAt(i);
-        hash = char + (hash << 6) + (hash << 16) - hash;
-    }
-    return hash;
-};
 
 MASCP.CddRunner.prototype.requestData = function()
 {   
@@ -6009,7 +6008,68 @@ MASCP.UbiquitinReader.Result.prototype.getAllExperimentalPositions = function()
 }
 MASCP.UbiquitinReader.Result.prototype.render = function()
 {
-};/**
+};/** @fileOverview   Classes for reading data from the Cdd tool
+ */
+if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
+    throw "MASCP.Service is not defined, required class";
+}
+
+/** Default class constructor
+ *  @class      Service class that will retrieve data from Cdd for given sequences
+ *  @param      {String} endpointURL    Endpoint URL for this service
+ *  @extends    MASCP.Service
+ */
+MASCP.UnionDomainReader = MASCP.buildService(function(data) {
+    if (data) {
+        if ( ! this._raw_data ) {
+            this._raw_data = {'data' : {}};
+        }
+        for (var key in data.data) {
+            this._raw_data.data[key] = data.data[key];
+        }
+    }
+    return this;
+});
+
+MASCP.UnionDomainReader.prototype.requestData = function() {
+    var self = this;
+    var uprot = new MASCP.UniprotDomainReader();
+    var cdd = new MASCP.CddRunner();
+    var uprot_result;
+    var cdd_result;
+    cdd.bind('running',function() {
+        bean.fire(self,'running');
+    });
+    var check_result = function(err) {
+        if (err) {
+            bean.fire(self,"error",[err]);
+            bean.fire(MASCP.Service,'requestComplete');
+            self.requestComplete();
+            check_result = function() {};
+            return;
+        }
+        if (uprot_result && cdd_result) {
+            self._dataReceived(uprot_result);
+            self._dataReceived(cdd_result);
+            self.gotResult();
+            self.requestComplete();
+        }
+    };
+    uprot.retrieve(this.agi,function(err) {
+        if ( ! err ) {
+            uprot_result = this.result._raw_data;
+        }
+        check_result(err);
+    });
+    cdd.retrieve(this.agi,function(err) {
+        if ( ! err ) {
+            cdd_result = this.result._raw_data;
+        }
+        check_result(err);
+    });
+    return;
+};
+/**
  * @fileOverview    Classes for reading data from Uniprot database
  */
 
@@ -6103,7 +6163,55 @@ MASCP.UniprotReader.readFastaFile = function(datablock,callback) {
     },0);
     return writer;
 };
-/**
+
+MASCP.UniprotReader.parseDomains = function(datalines) {
+    var results = {};
+    datalines = datalines.split(/\n/);
+    datalines.forEach(function(data) {
+        var domain_re = /FT\s+DOMAIN\s+(\d+)\s+(\d+)\s+(.*)/m;
+        var carb_re = /FT\s+CARBOHYD\s+(\d+)\s+(\d+)\s+(.*)/m;
+        var match = carb_re.exec(data);
+        if (match) {
+            var name = match[3];
+            name = name.replace('...','..');
+            if ( ! results[name]) {
+                results[name] = { "peptides" : [], "name" : name };
+            }
+            results[name].peptides.push([match[1],match[2]]);
+        }
+        var match = domain_re.exec(data);
+        if (match) {
+            if ( ! results[match[3]]) {
+                results[match[3]] = { "peptides" : [] };
+            }
+            results[match[3]].peptides.push([match[1],match[2]]);
+        }
+    });
+
+    return results;
+};
+
+MASCP.UniprotDomainReader = MASCP.buildService(function(data) {
+                        if ( data && typeof(data) === 'string' ) {
+                            var dats = MASCP.UniprotReader.parseDomains(data);
+                            data = { 'data' : dats };
+                            this._raw_data = data;
+                        }
+                        return this;
+                    });
+
+MASCP.UniprotDomainReader.prototype.requestData = function()
+{
+    var self = this;
+    return {
+        type: "GET",
+        dataType: "txt",
+        'url'   : 'http://www.uniprot.org/uniprot/'+this.agi+'.txt',
+        data: { 'acc'   : this.agi,
+                'service' : 'uniprot'
+        }
+    };
+};/**
  * @fileOverview    Classes for getting arbitrary user data onto the GATOR
  */
 
