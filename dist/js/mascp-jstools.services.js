@@ -3096,6 +3096,12 @@ if (typeof module != 'undefined' && module.exports){
             auth_done(null);
             return;
         }
+        if (repl.repl.running) {
+            console.log("Already asking for auth info");
+            auth_done(null);
+            return;
+        }
+        repl.repl.running = true;
         old_eval = repl.repl.eval;
         repl.repl.eval = function(cmd,context,filename,callback) {
             repl.repl.eval = old_eval;
@@ -3133,8 +3139,10 @@ if (typeof module != 'undefined' && module.exports){
                         callback(null,"Authentication code validated");
                         if (response.error) {
                             console.log("Error validating authentication code");
+                            delete repl.repl.running;
                             auth_done(null);
                         } else {
+                            delete repl.repl.running;
                             auth_done(response);
                         }
                     });
