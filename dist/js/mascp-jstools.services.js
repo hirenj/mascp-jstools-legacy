@@ -2890,7 +2890,7 @@ get_preferences = function(prefs_domain,callback) {
         callback.call(null,null,MASCP.preferences[prefs_domain]);
         return;
     }
-    var query = encodeURIComponent("title='"+prefs_domain+"' and mimeType = 'application/json+domaintool-session' and trashed = false");
+    var query = encodeURIComponent("title='"+prefs_domain+"' and mimeType = 'application/json; data-type=domaintool-session' and trashed = false");
     do_request("www.googleapis.com","/drive/v2/files?q="+query,null,function(err,data) {
 
         if (err) {
@@ -2915,7 +2915,6 @@ get_preferences = function(prefs_domain,callback) {
 
             var uri = parseUri(data.downloadUrl);
             do_request(uri.host,uri.relative,null,function(err,data) {
-                console.log("Back from getting data");
                 if ( err ) {
                     callback.call(null,err);
                     return;
@@ -2942,7 +2941,7 @@ write_preferences = function(prefs_domain,callback) {
         callback.call(null,{"error" : "No preferences to save"});
         return;
     }
-    var query = encodeURIComponent("title='"+prefs_domain+"' and mimeType = 'application/json+domaintool-session' and trashed = false");
+    var query = encodeURIComponent("title='"+prefs_domain+"' and mimeType = 'application/json; data-type=domaintool-session' and trashed = false");
     do_request("www.googleapis.com","/drive/v2/files?q="+query,null,function(err,data) {
 
         if (err) {
@@ -2953,7 +2952,7 @@ write_preferences = function(prefs_domain,callback) {
         if (data.items && data.items.length == 0) {
             do_request("www.googleapis.com","/drive/v2/files/",null,arguments.callee, "POST:application/json",JSON.stringify({
                 "title" : prefs_domain,
-                "mimeType" : "application/json+domaintool-session",
+                "mimeType" : "application/json; data-type=domaintool-session",
                 "description" : "Domaintool session information for session "+prefs_domain
             }));
             return;
@@ -2974,7 +2973,7 @@ write_preferences = function(prefs_domain,callback) {
             'method' : "PUT",
             'params' : { "uploadType" : "media"},
             'headers' : {
-                'Content-Type' : 'application/json+domaintool-session'
+                'Content-Type' : 'application/json; data-type=domaintool-session'
             },
             'body' : JSON.stringify(MASCP.preferences[prefs_domain])
         });
@@ -2993,7 +2992,7 @@ write_preferences = function(prefs_domain,callback) {
         //         return;
         //     }
         //     callback.call(null,null,MASCP.preferences[prefs_domain]);
-        // }, "PUT:application/json+domaintool-session",JSON.stringify(MASCP.preferences[prefs_domain]));
+        // }, "PUT:application/json; data-type=domaintool-session",JSON.stringify(MASCP.preferences[prefs_domain]));
     });
 };
 
@@ -3404,7 +3403,11 @@ if (typeof module != 'undefined' && module.exports){
             delete window["cback"+doc_id];
             callback.call(null,null,parsedata(dat));
         }
-        head.appendChild(script);
+        try {
+            head.appendChild(script);
+        } catch (e) {
+            callback.call(null,{"cause" : { "status" : "" }, "object" : e});
+        }
     };
     var initing_auth = false;
     var waiting_callbacks = [];
@@ -3521,7 +3524,10 @@ if (typeof module != 'undefined' && module.exports){
                         }
                         callback = null;
                     } else {
-                        callback.call(null,{'cause' : { 'status' : request.status }});
+                        if (callback !== null) {
+                            callback.call(null,{'cause' : { 'status' : request.status }});
+                        }
+                        callback =  null;
                     }
                 }
             };
@@ -3542,7 +3548,11 @@ if (typeof module != 'undefined' && module.exports){
         var doc_id = doc.replace(/^spreadsheet:/g,'');
         if (! is_spreadsheet || etag || MASCP.GOOGLE_AUTH_TOKEN) {
             basic_get_document(doc,etag,function(err,dat) {
-                if (err && (err.cause && err.cause.status != 304)) {
+                if (err) {
+                    if (err.cause && err.cause.status == 304) {
+                        callback.call(null,err);
+                        return;
+                    }
                     get_document_using_script(doc_id,callback);
                 } else {
                     callback.call(null,null,dat);
@@ -3621,7 +3631,7 @@ map = {
 */
 MASCP.GoogledataReader.prototype.createReader = function(doc, map) {
     var self = this;
-    var reader = new MASCP.UserdataReader();
+    var reader = new MASCP.UserdataReader(null,null);
     reader.datasetname = doc;
     reader.setupSequenceRenderer = setup;
 
@@ -3651,7 +3661,7 @@ MASCP.GoogledataReader.prototype.createReader = function(doc, map) {
             if (e) {
                 if (e.cause.status == 304) {
                     // We don't do anything - the cached data is fine.
-                    console.log("Matching e-tag");
+                    console.log("Matching e-tag for "+doc);
                     bean.fire(reader,'ready');
                     return;
                 }
@@ -3690,6 +3700,7 @@ MASCP.GoogledataReader.prototype.createReader = function(doc, map) {
             }
 
             if (update_timestamps[doc] && ((new Date().getTime()) - update_timestamps[doc]) < 1000*60*120) {
+                console.log("Update timestamp < 2 hours, not refreshing data for "+doc);
                 bean.fire(reader,'ready');
                 return;
             }
