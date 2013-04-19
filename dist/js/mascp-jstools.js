@@ -4041,6 +4041,9 @@ MASCP.GoogledataReader.prototype.createReader = function(doc, map) {
                 bean.fire(reader,"error",[e]);
                 return;
             }
+            if ( ! map ) {
+                return;
+            }
             // Clear out the cache since we have new data coming in
             console.log("Wiping out data on "+data.title+" ("+doc+")");
             MASCP.Service.ClearCache(reader,null,function(error) {
@@ -6626,6 +6629,9 @@ MASCP.UserdataReader.prototype.setData = function(name,data) {
         dataset = this.map(data);
     }
 
+    if ( ! this.map ) {
+        return;
+    }
     this.data = dataset;
     
     var inserter = new MASCP.UserdataReader();
