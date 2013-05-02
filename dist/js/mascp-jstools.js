@@ -297,7 +297,7 @@
     gesturestart: 1, gesturechange: 1, gestureend: 1, // gesture
     focus: 1, blur: 1, change: 1, reset: 1, select: 1, submit: 1, //form elements
     load: 1, unload: 1, beforeunload: 1, resize: 1, move: 1, DOMContentLoaded: 1, readystatechange: 1, //window
-    error: 1, abort: 1, scroll: 1 }; //misc
+    error: 0, abort: 1, scroll: 1 }; //misc
 
   function check(event) {
     var related = event.relatedTarget;
@@ -927,7 +927,7 @@ base.retrieve = function(agi,callback)
         this.result = null;
         
         var done_result = false;
-        var done_func = function(obj,err) {
+        var done_func = function(err,obj) {
             bean.remove(self,"resultReceived",done_func);
             bean.remove(self,"error",done_func);
             bean.remove(self,"requestComplete",done_func);
@@ -945,7 +945,15 @@ base.retrieve = function(agi,callback)
         bean.add(self,"requestComplete",done_func);
     }
     var request_data = this.requestData();
+
+    if (request_data === false) {
+        return;
+    }
+
     if (! request_data ) {
+        bean.fire(self,"error",["No request data"]);
+        bean.fire(MASCP.Service,"requestComplete",[self]);
+        this.requestComplete();
         return this;
     }
         
@@ -2715,6 +2723,14 @@ if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
     throw "MASCP.Service is not defined, required class";
 }
 
+/* We don't need to query the web service any more
+
+./ncbi-blast-2.2.28+/bin/rpsblast -db mycdd -evalue 0.01 -query foo.fasta -outfmt "6 sstart send stitle"
+
+http://blastedbio.blogspot.dk/2012/05/blast-tabular-missing-descriptions.html
+
+*/
+
 /** Default class constructor
  *  @class      Service class that will retrieve data from Cdd for given sequences
  *  @param      {String} endpointURL    Endpoint URL for this service
@@ -2766,6 +2782,9 @@ MASCP.CddRunner.SERVICE_URL = 'http://www.ncbi.nlm.nih.gov/Structure/bwrpsb/bwrp
 MASCP.CddRunner.prototype.requestData = function()
 {   
     var self = this;
+    bean.fire(self,"error",["CDD live retrieving is disabled"]);
+    return;
+
     // var sequences = [].concat(self.sequences || []);
 
     if (! MASCP.CddRunner.SERVICE_URL.match(/ncbi/)) {
@@ -6432,11 +6451,19 @@ MASCP.UnionDomainReader.prototype.requestData = function() {
     var self = this;
     var uprot = new MASCP.UniprotDomainReader();
     var cdd = new MASCP.CddRunner();
+    MASCP.Service.CacheService(cdd);
     var uprot_result;
     var cdd_result;
     cdd.bind('running',function() {
         bean.fire(self,'running');
     });
+    var merge_hash = function(h1,h2) {
+        var key;
+        for (key in h2) {
+            h1[key] = h2[key];
+        }
+        return h1;
+    }
     var check_result = function(err) {
         if (err) {
             bean.fire(self,"error",[err]);
@@ -6446,8 +6473,7 @@ MASCP.UnionDomainReader.prototype.requestData = function() {
             return;
         }
         if (uprot_result && cdd_result) {
-            self._dataReceived(uprot_result);
-            self._dataReceived(cdd_result);
+            self._dataReceived(merge_hash(uprot_result,cdd_result));
             self.gotResult();
             self.requestComplete();
         }
@@ -6464,7 +6490,7 @@ MASCP.UnionDomainReader.prototype.requestData = function() {
         }
         check_result(err);
     });
-    return;
+    return false;
 };
 /**
  * @fileOverview    Classes for reading data from Uniprot database
