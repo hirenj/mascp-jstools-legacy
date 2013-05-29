@@ -1902,7 +1902,11 @@ var SVGCanvas = SVGCanvas || (function() {
             marker.setHeight = setHeight;
             marker.setAttribute('height', dim.R*RS);
             if (typeof symbol == 'string') {
-                marker.contentElement = this.text_circle(0,0.5*r,1.75*r,symbol,opts);
+                if (symbol.match(/^(:?https?:)?\//)) {
+                    marker.contentElement = this.use(symbol,-r,0,r,r);
+                } else {
+                    marker.contentElement = this.text_circle(0,0.5*r,1.75*r,symbol,opts);
+                }
                 marker.push(marker.contentElement);
             } else {
                 marker.contentElement = this.group();
@@ -2937,7 +2941,7 @@ var addElementToLayer = function(layerName,opts) {
                 var scale = parseFloat(matches[2]);
                 var y = parseFloat(matches[1]);
                 var new_height = y + scale*(((tracer_marker.offset || 0) * 50) + 125) - parseInt(this.getAttribute('y'));
-                this.setAttribute('height',new_height);
+                this.setAttribute('height',new_height < 0 ? 0 : new_height );
             } else {
                 this.setAttribute('height',height);
             }
