@@ -14611,7 +14611,11 @@ GOMap.Diagram.Dragger.prototype.applyToElement = function(targetElement) {
 
 
 GOMap.Diagram.addTouchZoomControls = function(zoomElement,touchElement) {
+    GOMap.Diagram.Dragger.prototype.addTouchZoomControls.call({"enabled" : true },zoomElement,touchElement);
+};
 
+GOMap.Diagram.Dragger.prototype.addTouchZoomControls = function(zoomElement,touchElement) {
+    var self = this;
     var mousePosition = function(evt) {
         var posx = 0;
         var posy = 0;
@@ -14632,6 +14636,9 @@ GOMap.Diagram.addTouchZoomControls = function(zoomElement,touchElement) {
         return [ posx, posy ];
     };
     touchElement.addEventListener('touchstart',function(e) {
+        if ( ! self.enabled ) {
+            return;
+        }
         if (e.touches.length == 2) {
             var positions = mousePosition(e.touches[0]);
             var positions2 = mousePosition(e.touches[1]);
@@ -14653,6 +14660,9 @@ GOMap.Diagram.addTouchZoomControls = function(zoomElement,touchElement) {
     },false);
 
     touchElement.addEventListener('gesturestart',function(e) {
+        if ( ! self.enabled ) {
+            return;
+        }
         zoomElement.zoomLeft = null;
         var zoomStart = zoomElement.zoom;
 
