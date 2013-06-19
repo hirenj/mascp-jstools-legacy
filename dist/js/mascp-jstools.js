@@ -12492,7 +12492,7 @@ MASCP.CondensedSequenceRenderer.Navigation = (function() {
             if (visible) {
                 self.promote();
                 panel_back.setAttribute('visibility','visible');
-                panel_back.setAttribute('style',needs_transition);
+                panel_back.setAttribute('style',needs_transition+translate(0));
                 tracks_button.setAttribute('style',old_tracks_style + " "+needs_transition);
 
 
@@ -12503,8 +12503,7 @@ MASCP.CondensedSequenceRenderer.Navigation = (function() {
                     close_transform = close_transform.replace(/rotate\(.*\)/,'');
                     close_group.setAttribute('transform',close_transform);
                 }
-                close_group.setAttribute('style',needs_transition+transform_origin_statement);
-
+                close_group.setAttribute('style',needs_transition+translate(0)+transform_origin_statement);
                 self.refresh();
             } else {
                 self.demote();
