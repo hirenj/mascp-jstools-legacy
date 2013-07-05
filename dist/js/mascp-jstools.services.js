@@ -3431,6 +3431,9 @@ if (typeof module != 'undefined' && module.exports){
                 }
             } else {
                 console.log("Could not authorize");
+                if (cback) {
+                    cback.call({"error" : "Could not authorize" });
+                }
             }
         });
     }
@@ -3454,8 +3457,12 @@ if (typeof module != 'undefined' && module.exports){
             headers_block['Authorization'] = 'Bearer '+MASCP.GOOGLE_AUTH_TOKEN;
         } else {
             var self_func = arguments.callee;
-            authenticate(function() {
-                self_func.call(null,host,path,etag,callback);
+            authenticate(function(err) {
+                if ( ! err ) {
+                    self_func.call(null,host,path,etag,callback);
+                } else {
+                    self_func.call(err);
+                }
             });
             return;
         }
