@@ -3555,7 +3555,7 @@ get_document = function(doc,etag,callback) {
 if (typeof module != 'undefined' && module.exports){
 
     var nconf = require('nconf');
-    nconf.env().argv();
+    nconf.env('__').argv();
     nconf.file('config.json');
 
     var google_client_id = nconf.get('google:client_id');
@@ -3791,7 +3791,7 @@ if (typeof module != 'undefined' && module.exports){
             } else {
                 console.log("Could not authorize");
                 if (cback) {
-                    cback.call(null,{"error" : "Could not authorize" });
+                    cback.call(null,{"cause" : "Could not authorize"});
                 }
             }
         });
