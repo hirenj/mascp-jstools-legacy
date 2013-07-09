@@ -1676,7 +1676,7 @@ base.retrieve = function(agi,callback)
                     callback.call({ "transaction" : trans });
                     return false;
                 }
-                db.exec("BEGIN TRANSACTION;",function(err) {
+                db.exec("PRAGMA synchronous=OFF; PRAGMA journal_mode=OFF;",function(err) {
                     if ( err ) {
                         callback.call(null,err);
                         return;
@@ -1698,7 +1698,7 @@ base.retrieve = function(agi,callback)
                     callback();
                     return;
                 }
-                db.exec("END TRANSACTION;",function(err) {
+                db.exec("PRAGMA synchronous=FULL; PRAGMA journal_mode=DELETE;",function(err) {
                     get_db_data = old_get_db_data;
                     old_get_db_data = null;
                     callback(err);
