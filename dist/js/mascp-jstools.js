@@ -7604,6 +7604,56 @@ if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
  *  @param      {String} endpointURL    Endpoint URL for this service
  *  @extends    MASCP.Service
  */
+MASCP.HydropathyRunner = MASCP.buildService(function(data) {
+                        this._raw_data = data;
+                        return this;
+                    });
+
+MASCP.HydropathyRunner.prototype.retrieve = function()
+{
+    bean.fire(this,'resultReceived');
+};
+
+MASCP.HydropathyRunner.prototype.setupSequenceRenderer = function(renderer) {
+    this.bind('resultReceived',function() {
+        var windowSize = 5;
+        var options = {};
+        var kd = { 'A': 1.8,'R':-4.5,'N':-3.5,'D':-3.5,'C': 2.5,
+               'Q':-3.5,'E':-3.5,'G':-0.4,'H':-3.2,'I': 4.5,
+               'L': 3.8,'K':-3.9,'M': 1.9,'F': 2.8,'P':-1.6,
+               'S':-0.8,'T':-0.7,'W':-0.9,'Y':-1.3,'V': 4.2 };
+        var values = [];
+        for (var i = 0; i < windowSize; i++) {
+            values[i] = 0;
+        }
+        for (var i = windowSize; i < (renderer._sequence_els.length - windowSize); i++ ) {
+            var value = 0;
+            for (var j = -1*windowSize; j <= windowSize; j++) {
+                value += kd[renderer._sequence_els[i+j].amino_acid[0]] / (windowSize * 2 + 1);
+            }
+            values.push(value);
+        }
+        MASCP.registerLayer('hydropathy',{ 'fullname' : 'Hydropathy plot', 'color' : '#f00' });
+        renderer.addValuesToLayer('hydropathy',values,options);
+        if (renderer.trackOrder.indexOf('hydropathy') < 0) {
+            renderer.trackOrder.push('hydropathy');
+        }
+        renderer.showLayer('hydropathy');
+        renderer.trigger('resultsRendered',[this]);
+    });
+};
+
+
+/** @fileOverview   Classes for reading data from PRIDE */
+if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
+    throw "MASCP.Service is not defined, required class";
+}
+
+/** Default class constructor
+ *  @class      Service class that will retrieve data from Clustal for given sequences
+ *  @param      {String} endpointURL    Endpoint URL for this service
+ *  @extends    MASCP.Service
+ */
 MASCP.PrideRunner = MASCP.buildService(function(data) {
                         this._raw_data = data;
                         return this;
@@ -10722,29 +10772,6 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
 
 })(MASCP.CondensedSequenceRenderer);
 
-/**
- * Create a Hydropathy plot, and add it to the renderer as a layer.
- * @param {Number}  windowSize  Size of the sliding window to use to calculate hydropathy values
- * @returns Hydropathy values for each of the residues
- * @type Array
- */
-MASCP.CondensedSequenceRenderer.prototype.createHydropathyLayer = function(windowSize) {
-    MASCP.registerLayer('hydropathy',{ 'fullname' : 'Hydropathy plot','color' : '#990000' });
-    var kd = { 'A': 1.8,'R':-4.5,'N':-3.5,'D':-3.5,'C': 2.5,
-           'Q':-3.5,'E':-3.5,'G':-0.4,'H':-3.2,'I': 4.5,
-           'L': 3.8,'K':-3.9,'M': 1.9,'F': 2.8,'P':-1.6,
-           'S':-0.8,'T':-0.7,'W':-0.9,'Y':-1.3,'V': 4.2 };
-    var values = [];
-    for (var i = windowSize; i < (this._sequence_els.length - windowSize); i++ ) {
-        var value = 0;
-        for (var j = -1*windowSize; j <= windowSize; j++) {
-            value += kd[this._sequence_els[i+j].amino_acid[0]] / (windowSize * 2 + 1);
-        }        
-    }    
-    this.addValuesToLayer('hydropathy',values);
-};
-
-
 MASCP.CondensedSequenceRenderer.prototype.addValuesToLayer = function(layerName,values,options) {
     var RS = this._RS;
     
@@ -10796,6 +10823,7 @@ MASCP.CondensedSequenceRenderer.prototype.addValuesToLayer = function(layerName,
     var axis = this._canvas.path('M0 0 m0 '+(RS*((max_value || 0) - (min_value || 0)))+' l'+this._sequence_els.length*RS+' 0');
     var plot = this._canvas.path('M0 0 M0 0 m0 '+((max_value || 0))*RS+' '+recalculate_plot(1));
     var abs_min_val = min_value;
+    var abs_max_val = max_value;
     plot.setAttribute('stroke','#ff0000');
     plot.setAttribute('stroke-width', 0.35*RS);
     plot.setAttribute('fill', 'none');
@@ -10827,10 +10855,13 @@ MASCP.CondensedSequenceRenderer.prototype.addValuesToLayer = function(layerName,
         plot.setAttribute('stroke-width',RS/renderer.zoom);
     };
     axis.setHeight = function(height) {
-        axis.setAttribute('d','M0 0 m0 '+height*offset_scale+'m0 '+0.5*(1-abs_min_val)*height*height_scale+' l'+renderer._sequence_els.length*RS+' 0');
+        if (abs_min_val < 0 && abs_max_val > 0) {
+            axis.setAttribute('d','M0 0 m0 '+height*offset_scale+'m0 '+0.5*height*height_scale+' l'+renderer._sequence_els.length*RS+' 0');            
+        } else {
+            axis.setAttribute('d','M0 0 m0 '+height*offset_scale+'m0 '+0.5*(1-abs_min_val)*height*height_scale+' l'+renderer._sequence_els.length*RS+' 0');
+        }
         axis.setAttribute('stroke-width',0.2*RS/renderer.zoom);
     }
-    // this._layer_containers.hydropathy.fixed_track_height = (-1*min_value+max_value) / RS;
     return plot;
 };
 
