@@ -2086,11 +2086,11 @@ MASCP.Service.prototype.toString = function()
  * results onto the sequence.
  * @param {MASCP.SequenceRenderer} sequenceRenderer Sequence renderer object to render results upon
  */
-MASCP.Service.prototype.registerSequenceRenderer = function(sequenceRenderer)
+MASCP.Service.prototype.registerSequenceRenderer = function(sequenceRenderer,options)
 {
     if (this.setupSequenceRenderer) {
         this.renderers = this.renderers || [];
-        this.setupSequenceRenderer(sequenceRenderer);        
+        this.setupSequenceRenderer(sequenceRenderer,options);
         this.renderers.push(sequenceRenderer);
     }
     sequenceRenderer.trigger('readerRegistered',[this]);
@@ -7614,10 +7614,10 @@ MASCP.HydropathyRunner.prototype.retrieve = function()
     bean.fire(this,'resultReceived');
 };
 
-MASCP.HydropathyRunner.prototype.setupSequenceRenderer = function(renderer) {
+MASCP.HydropathyRunner.prototype.setupSequenceRenderer = function(renderer,options) {
     this.bind('resultReceived',function() {
         var windowSize = 5;
-        var options = {};
+        options = options || {};
         var kd = { 'A': 1.8,'R':-4.5,'N':-3.5,'D':-3.5,'C': 2.5,
                'Q':-3.5,'E':-3.5,'G':-0.4,'H':-3.2,'I': 4.5,
                'L': 3.8,'K':-3.9,'M': 1.9,'F': 2.8,'P':-1.6,
@@ -7633,12 +7633,10 @@ MASCP.HydropathyRunner.prototype.setupSequenceRenderer = function(renderer) {
             }
             values.push(value);
         }
-        MASCP.registerLayer('hydropathy',{ 'fullname' : 'Hydropathy plot', 'color' : '#f00' });
-        renderer.addValuesToLayer('hydropathy',values,options);
-        if (renderer.trackOrder.indexOf('hydropathy') < 0) {
-            renderer.trackOrder.push('hydropathy');
+        if ( ! options.track ) {
+            MASCP.registerLayer('hydropathy',{ 'fullname' : 'Hydropathy plot', 'color' : '#f00' });
         }
-        renderer.showLayer('hydropathy');
+        renderer.addValuesToLayer(options.track || 'hydropathy',values,options);
         renderer.trigger('resultsRendered',[this]);
     });
 };
@@ -7692,7 +7690,10 @@ MASCP.PrideRunner.prototype.requestData = function()
     }
 };
 
-MASCP.PrideRunner.prototype.setupSequenceRenderer = function(renderer) {
+MASCP.PrideRunner.prototype.setupSequenceRenderer = function(renderer,options) {
+    if ( ! options ) {
+        options = {};
+    }
     this.bind('resultReceived',function() {
       var raw_values = [];
       var max_val = 0;
@@ -7720,7 +7721,7 @@ MASCP.PrideRunner.prototype.setupSequenceRenderer = function(renderer) {
           values.push(0);
         }
       }
-      var plot = renderer.addValuesToLayer(this.agi,values,{'height' : 12, 'offset' : 32, 'label' : { 'max' : max_val+' PRIDE peptides' } });
+      var plot = renderer.addValuesToLayer(options.track || this.agi,values,{'height' : 12, 'offset' : isNaN(options.offset) ? 0 : options.offset, 'label' : { 'max' : max_val+' PRIDE peptides' } });
       plot.setAttribute('stroke','#00f');
       renderer.trigger('resultsRendered',[this]);
     });
@@ -10851,14 +10852,14 @@ MASCP.CondensedSequenceRenderer.prototype.addValuesToLayer = function(layerName,
 
     plot.setHeight = function(height) {
         var path_vals = recalculate_plot(0.5*height/RS);
-        plot.setAttribute('d','M0 0 m0 '+height*offset_scale+'m0 '+0.5*height*height_scale+' '+path_vals);
+        plot.setAttribute('d','M0 0 M0 0 m0 '+height*offset_scale+'m0 '+0.5*height*height_scale+' '+path_vals);
         plot.setAttribute('stroke-width',RS/renderer.zoom);
     };
     axis.setHeight = function(height) {
         if (abs_min_val < 0 && abs_max_val > 0) {
-            axis.setAttribute('d','M0 0 m0 '+height*offset_scale+'m0 '+0.5*height*height_scale+' l'+renderer._sequence_els.length*RS+' 0');            
+            axis.setAttribute('d','M0 0 M0 0 m0 '+height*offset_scale+'m0 '+0.5*height*height_scale+' l'+renderer._sequence_els.length*RS+' 0');
         } else {
-            axis.setAttribute('d','M0 0 m0 '+height*offset_scale+'m0 '+0.5*(1-abs_min_val)*height*height_scale+' l'+renderer._sequence_els.length*RS+' 0');
+            axis.setAttribute('d','M0 0 M0 0 m0 '+height*offset_scale+'m0 '+0.5*(1-abs_min_val)*height*height_scale+' l'+renderer._sequence_els.length*RS+' 0');
         }
         axis.setAttribute('stroke-width',0.2*RS/renderer.zoom);
     }
