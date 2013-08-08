@@ -3447,6 +3447,14 @@ var write_file = function(filename,mime,callback) {
         // allow the CORS request to go through
 
 
+        var string_rep;
+        try {
+            string_rep = JSON.stringify(cached_files[filename]);
+        } catch (e) {
+            callback.call(null,{"status" : "JSON error", "error" : e });
+            return;
+        }
+
         var req = gapi.client.request({
             'path' : "/upload/drive/v2/files/"+item_id,
             'method' : "PUT",
@@ -3454,7 +3462,7 @@ var write_file = function(filename,mime,callback) {
             'headers' : {
                 'Content-Type' : mime
             },
-            'body' : JSON.stringify(cached_files[filename])
+            'body' : string_rep
         });
         req.execute(function(isjson,data) {
             if ( ! isjson ) {
@@ -10087,8 +10095,12 @@ var SVGCanvas = SVGCanvas || (function() {
             });
 
             // Update the bounding box with the new values
-            bb.x = xMin; bb.width  = xMax-xMin;
-            bb.y = yMin; bb.height = yMax-yMin;
+            try {
+                bb.x = xMin; bb.width  = xMax-xMin;
+                bb.y = yMin; bb.height = yMax-yMin;
+            } catch (e) {
+                bb = { 'x' : xMin, 'y' : yMin, 'width' : xMax-xMin, 'height' : yMax-yMin };
+            }
             return bb;
         };
         
@@ -14915,6 +14927,10 @@ GOMap.Diagram.Dragger.prototype.applyToElement = function(targetElement) {
         var targ = self.targetElement ? self.targetElement : targetElement;
 
         var positions = mousePosition(e.touches[0]);
+
+        if (! positions || ! self.matrix) {
+            return;
+        }
 
         var p;
         if (targ.nodeName == 'svg') {
