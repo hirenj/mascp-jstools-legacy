@@ -1607,7 +1607,10 @@ var SVGCanvas = SVGCanvas || (function() {
             return a_line;        
         };
 
-        canvas.rect = function(x,y,width,height) {
+        canvas.rect = function(x,y,width,height,opts) {
+            if ( ! opts ) {
+                opts = {};
+            }
             var a_rect = document.createElementNS(svgns,'rect');
             a_rect.setAttribute('x', typeof x == 'string' ? x : x * RS);
             a_rect.setAttribute('y', typeof y == 'string' ? y : y * RS);
@@ -1615,24 +1618,36 @@ var SVGCanvas = SVGCanvas || (function() {
             a_rect.setAttribute('height', typeof height == 'string' ? height : height * RS);
             a_rect.setAttribute('stroke','#000000');
             this.appendChild(a_rect);
+            if ( typeof(opts.offset) !== "undefined" ) {
+                this.offset = opts.offset;
+                a_rect.setAttribute('transform','translate('+a_rect.getAttribute('x')+','+a_rect.getAttribute('y')+')');
+                a_rect.setAttribute('x','0');
+                a_rect.setAttribute('y',this.offset*RS);
+            }
+
             a_rect.move = function(new_x,new_width) {
-                this.setAttribute('x',new_x*RS);
-                this.setAttribute('width',new_width*RS);
+                if ((typeof(this.offset) !== "undefined") && this.getAttribute('transform')) {
+                    var transform_attr = this.getAttribute('transform');
+                    var matches = /translate\(.*[,\s](.*)\)/.exec(transform_attr);
+                    if (matches[1]) {
+                      this.setAttribute('transform','translate('+(new_x*RS)+','+matches[1]+')');
+                    }
+                    this.setAttribute('width',new_width*RS);
+                } else {
+                    this.setAttribute('x',new_x*RS);
+                    this.setAttribute('width',new_width*RS);
+                }
             };
             return a_rect;
         };
 
-        canvas.roundRect = function(x,y,width,height,r) {
-            var a_rect = this.rect(x,y,width,height);
+        canvas.roundRect = function(x,y,width,height,r,opts) {
+            var a_rect = this.rect(x,y,width,height,opts);
             if (typeof r != 'object' || ! r.x ) {
                 r = { 'x' : r, 'y' : r };
             }
             a_rect.setAttribute('rx',r.x*RS);
             a_rect.setAttribute('ry',r.y*RS);
-            a_rect.move = function(new_x,new_width) {
-                this.setAttribute('x',new_x*RS);
-                this.setAttribute('width',new_width*RS);
-            };
             return a_rect;
         };
 
@@ -1838,22 +1853,37 @@ var SVGCanvas = SVGCanvas || (function() {
             positioning_group.appendChild(container);
             container.setAttribute('width','200');
             container.setAttribute('height','250');
+            // var rect = document.createElementNS(svgns,'rect');
+            // rect.setAttribute('stroke','#f00');
+            // rect.setAttribute('stroke-width','10');
+            // rect.setAttribute('x','-50');
+            // rect.setAttribute('y','-100');
+            // rect.setAttribute('width','100%');
+            // rect.setAttribute('height','100%');
+            // rect.setAttribute('fill','none');
+            // container.appendChild(rect);
+
+            // var rect = document.createElementNS(svgns,'rect');
+            // rect.setAttribute('stroke','#0f0');
+            // rect.setAttribute('stroke-width','10');
+            // rect.setAttribute('x','50');
+            // rect.setAttribute('y','25');
+            // rect.setAttribute('width','50%');
+            // rect.setAttribute('height','50%');
+            // rect.setAttribute('fill','none');
+
+            // container.appendChild(rect);
+
             result.setAttribute('height','250');
             result.setAttribute('transform','scale(1)');
             result.setHeight = function(height) {
                 // this.setAttribute('height',height);
                 var scale_val = setHeight.call(this,height);
                 this.setAttribute('height',height);
-                var top_offset = this.offset || 0;
+                var top_offset = this.offset;
                 var widget_height = parseFloat(this.firstChild.firstChild.getAttribute('height'));
                 if ( ! this.angle ) {
                     this.angle = 0;
-                }
-                if (this.angle > 10) {
-                    centering_offset = 0;
-                }
-                if (top_offset == 0) {
-                    centering_offset = 0;
                 }
                 this.firstChild.setAttribute('transform','translate(-100,'+(top_offset*RS)+') rotate('+this.angle+',100,0)');
             };
@@ -2962,6 +2992,9 @@ var addElementToLayer = function(layerName,opts) {
     var scale = 1;
     if (opts.height) {
         scale = opts.height / this._renderer._layer_containers[layerName].track_height;
+        if (typeof(opts.offset) !== 'undefined') {
+            opts.offset  = -1.25 -1.25 + (opts.offset / opts.height) * 5;// ( -250/4 + (x / height) * 250 ) where 250 is growing marker height
+        }
     }
 
     var tracer_marker = canvas.growingMarker(0,0,opts.content || layerName.charAt(0).toUpperCase(),opts);
@@ -3036,52 +3069,56 @@ var addElementToLayer = function(layerName,opts) {
     return result;
 };
 
-var addBoxOverlayToElement = function(layerName,width,fraction) {
-    
-    if (typeof fraction == 'undefined') {
-        fraction = 1;
-    }
+var addBoxOverlayToElement = function(layerName,width,fraction,opts) {
     
     var canvas = this._renderer._canvas;
-
+    var renderer = this._renderer;
+    if ( ! opts ) {
+        opts = {};
+    }
     if ( ! canvas ) {
         var orig_func = arguments.callee;
         var self = this;
         this._renderer.bind('sequencechange',function() {
             this._renderer.unbind('sequencechange',arguments.callee);            
-            orig_func.call(self,layerName,fraction,width);
+            orig_func.call(self,layerName,width,opts);
         });
         log("Delaying rendering, waiting for sequence change");
         return;
     }
 
 
-    var rect =  canvas.rect(-0.25+this._index,60,width || 1,4);
+    var rect =  canvas.rect(-0.25+this._index,60,width || 1,4,opts);
     var rect_x = parseFloat(rect.getAttribute('x'));
     var rect_max_x = rect_x + parseFloat(rect.getAttribute('width'));
     var container = this._renderer._layer_containers[layerName];
-    for (var i = 0; i < container.length; i++) {
-        var el_x = parseFloat(container[i].getAttribute('x'));
-        var el_max_x = el_x + parseFloat(container[i].getAttribute('width'));
-        if ((el_x <= rect_x && rect_x <= el_max_x) ||
-            (rect_x <= el_x && el_x <= rect_max_x)) {
-                if (container[i].style.opacity != fraction) {
-                    continue;
+    if ( typeof(opts.merge) == 'undefined' || opts.merge ) {
+        for (var i = 0; i < container.length; i++) {
+            var el_x = parseFloat(container[i].getAttribute('x'));
+            var el_max_x = el_x + parseFloat(container[i].getAttribute('width'));
+            if ((el_x <= rect_x && rect_x <= el_max_x) ||
+                (rect_x <= el_x && el_x <= rect_max_x)) {
+                    container[i].setAttribute('x', ""+Math.min(el_x,rect_x));
+                    container[i].setAttribute('width', ""+(Math.max(el_max_x,rect_max_x)-Math.min(el_x,rect_x)) );
+                    rect.parentNode.removeChild(rect);
+                    return container[i];
                 }
-                container[i].setAttribute('x', ""+Math.min(el_x,rect_x));
-                container[i].setAttribute('width', ""+(Math.max(el_max_x,rect_max_x)-Math.min(el_x,rect_x)) );
-                rect.parentNode.removeChild(rect);
-                return container[i];
-            }
+        }
     }
     this._renderer._layer_containers[layerName].push(rect);
     rect.setAttribute('class',layerName);
     rect.style.strokeWidth = '0px';
     rect.setAttribute('visibility', 'hidden');
-    rect.style.opacity = fraction;
-    rect.setAttribute('fill',MASCP.layers[layerName].color);
+    rect.setAttribute('fill',opts.fill || MASCP.layers[layerName].color);
     rect.position_start = this._index;
     rect.position_end = this._index + width;
+    if ((typeof(opts.offset) !== "undefined") || opts.height_scale) {
+        var offset_val = opts.offset;
+        rect.setHeight = function(hght) {
+            this.setAttribute('y',offset_val*renderer._RS/renderer.zoom);
+            this.setAttribute('height',hght*(opts.height_scale || 1));
+        };
+    }
     return rect;
 };
 
@@ -3175,7 +3212,7 @@ var addShapeToElement = function(layerName,width,opts) {
             if ( ! this._orig_stroke_width ) {
                 this._orig_stroke_width = parseInt(this.getAttribute('stroke-width'));
             }
-            shape.setAttribute('y', (offset_val*renderer._RS)/renderer.zoom);
+            shape.setAttribute('y', (offset_val*renderer._RS/renderer.zoom));
             shape.setAttribute('height',(orig_height*renderer._RS)/renderer.zoom);
             shape.setAttribute('stroke-width',this._orig_stroke_width/renderer.zoom);
         };
@@ -4093,6 +4130,9 @@ clazz.prototype.wireframe = function() {
             a_rect.setAttribute('stroke','#ff0000');
             a_rect.setAttribute('fill','none');
             this.wireframes.push(a_rect);
+            if (this.navigation) {
+                track_heights += container.track_height;
+            }
             track_heights += container.track_height + this.trackGap;
         }
 
