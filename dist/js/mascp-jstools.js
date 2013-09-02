@@ -3934,9 +3934,9 @@ if (typeof module != 'undefined' && module.exports){
             type = "private";
         }
         script.src = "https://spreadsheets.google.com/feeds/cells/"+doc_id+"/1/"+type+"/basic?alt=json-in-script&callback=cback"+doc_id+""+auth;
-        var error_function = function() {
+        var error_function = function(e) {
             if (window.removeEventListener) {
-                window.removeEventListener(error_function);
+                window.removeEventListener('error',error_function);
             }
             if (script.parentNode) {
                 script.parentNode.removeChild(script);
@@ -3961,6 +3961,7 @@ if (typeof module != 'undefined' && module.exports){
     };
     var initing_auth = false;
     var waiting_callbacks = [];
+    var has_failed_once = false;
 
     authenticate = function(cback,noevent) {
         if (MASCP.GOOGLE_AUTH_TOKEN) {
@@ -3993,8 +3994,26 @@ if (typeof module != 'undefined' && module.exports){
         if (! window.event && "event" in window) {
             user_action = false;
         }
+        if (! user_action && has_failed_once) {
+            cback.call(null,{"cause" : "No user event" });
+            return;
+        }
         setTimeout(function() {
+
+        var timeout = setTimeout(function() {
+            var error = { "cause" : "Failed to return from auth" };
+            cback.call(null,error);
+            waiting_callbacks.forEach(function(cb){
+                if (cb !== cback) {
+                    cb.call(null,error);
+                }
+            });
+            waiting_callbacks = [];
+            return;
+        },3000);
+
         gapi.auth.authorize(auth_settings,function(result) {
+            clearTimeout(timeout);
             if (result && ! result.error) {
                 MASCP.GOOGLE_AUTH_TOKEN = result.access_token;
                 window.setTimeout(function(){
@@ -4039,6 +4058,7 @@ if (typeof module != 'undefined' && module.exports){
                                 }
                             });
                         };
+                        has_failed_once = true;
                         cback.call(null,{"cause" : "No user event", "authorize" : auth_func });
                         if (waiting_callbacks) {
                             waiting_callbacks.forEach(function(cb) {
