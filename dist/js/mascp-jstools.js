@@ -9307,7 +9307,7 @@ var SVGCanvas = SVGCanvas || (function() {
             
             if (an_array[0] && an_array[0].getAttribute('transform')) {
                 a_y = /translate\((-?\d+\.?\d*)\s*,?\s*(-?\d+\.?\d*)\)/.exec(an_array[0].getAttribute('transform'));
-                if (typeof a_y != 'undefined') {
+                if (a_y !== null && (typeof(a_y) !== 'undefined')) {
                     a_y = a_y[2];
                 }
             }
@@ -9472,12 +9472,12 @@ var SVGCanvas = SVGCanvas || (function() {
                         if (key == 'y' && an_array[i].hasAttribute('transform')) {
                             curr_transform = an_array[i].getAttribute('transform');
                         
-                            curr_x = /translate\((-?\d+\.?\d*)\s*,?\s*(-?\d+\.?\d*)\)/.exec(an_array[i].getAttribute('transform'));
+                            curr_x = /translate\((-?\d+\.?\d*)\s*,?\s*(-?\d+\.?\d*)?\)/.exec(an_array[i].getAttribute('transform'));
                             if (curr_x === null) {
                                 continue;
                             }
                             curr_x = curr_x[1];
-                            curr_transform = curr_transform.replace(/translate\((-?\d+\.?\d*)\s*,?\s*(-?\d+\.?\d*)\)/,'translate('+curr_x+','+value+')');
+                            curr_transform = curr_transform.replace(/translate\((-?\d+\.?\d*)\s*,?\s*(-?\d+\.?\d*)?\)/,'translate('+curr_x+','+value+')');
                             an_array[i].setAttribute('transform',curr_transform);                        
                         }
                         if (key == 'x' && an_array[i].hasAttribute('transform')) {
@@ -11039,12 +11039,12 @@ MASCP.CondensedSequenceRenderer.prototype.addValuesToLayer = function(layerName,
     plot.setAttribute('visibility','hidden');
     axis.setAttribute('stroke-width',0.2*RS);
     axis.setAttribute('visibility','hidden');
-    axis.setAttribute('transform','translate(0,0)');
+    axis.setAttribute('transform','translate(1,0)');
     plot.setAttribute('pointer-events','none');
     axis.setAttribute('pointer-events','none');
     
     this._layer_containers[layerName].push(plot);
-    plot.setAttribute('transform','translate(0,10) scale(1,1)');
+    plot.setAttribute('transform','translate(1,10) scale(1,1)');
     this._layer_containers[layerName].push(axis);
 
     if (options.label) {
