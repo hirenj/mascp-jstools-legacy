@@ -3032,7 +3032,7 @@ var cached_files = {};
 var etags = {};
 
 var get_file = function(filename,mime,callback) {
-    if (cached_files[filename] && callback) {
+    if (cached_files[filename] && callback && MASCP["GOOGLE_AUTH_TOKEN"]) {
         callback.call(null,null,cached_files[filename]);
         return;
     }
@@ -3044,6 +3044,9 @@ var get_file = function(filename,mime,callback) {
             return;
         }
 
+        if (err && err.status == 401) {
+            delete MASCP["GOOGLE_AUTH_TOKEN"];
+        }
 
         if (err) {
             callback.call(null,err);
@@ -3266,6 +3269,9 @@ get_document = function(doc,etag,callback) {
                     }
                 });
             } else {
+                if (err.cause && err.cause.status == 401) {
+                    delete MASCP["GOOGLE_AUTH_TOKEN"];
+                }
                 callback.call(null,err);
             }
         });
@@ -3663,12 +3669,14 @@ if (typeof module != 'undefined' && module.exports){
             user_action = false;
         }
         if (! user_action && has_failed_once) {
+            initing_auth = false;
             cback.call(null,{"cause" : "No user event" });
             return;
         }
         setTimeout(function() {
 
         var timeout = setTimeout(function() {
+            initing_auth = false;
             var error = { "cause" : "Failed to return from auth" };
             cback.call(null,error);
             waiting_callbacks.forEach(function(cb){
