@@ -2908,7 +2908,7 @@ var parsedata = function ( data ){
     return retdata;
 };
 
-var get_document, get_document_list, get_permissions, get_permissions_id, authenticate, do_request, update_or_insert_row, insert_row;
+var get_document, get_document_list, get_permissions, get_permissions_id, get_mimetype, authenticate, do_request, update_or_insert_row, insert_row;
 
 update_or_insert_row = function(doc,query,new_data,callback) {
     if ( ! doc.match(/^spreadsheet/ ) ) {
@@ -3304,6 +3304,12 @@ get_permissions = function(doc,callback) {
         });
     });
 };
+
+get_mimetype = function(doc_id,callback) {
+    do_request("www.googleapis.com","/drive/v2/files/"+doc_id+"?fields=mimeType,title",null,function(err,data) {
+        callback.call(null,err,err ? null : (data || {}).mimeType,err ? null : (data || {}).title );
+    });
+}
 
 get_document = function(doc,etag,callback) {
     var is_spreadsheet = true;
@@ -3973,6 +3979,8 @@ MASCP.GoogledataReader.prototype.getDocumentList = get_document_list;
 MASCP.GoogledataReader.prototype.getDocument = get_document;
 
 MASCP.GoogledataReader.prototype.getPermissions = get_permissions;
+
+MASCP.GoogledataReader.prototype.getMimetype = get_mimetype;
 
 MASCP.GoogledataReader.prototype.updateOrInsertRow = update_or_insert_row;
 
