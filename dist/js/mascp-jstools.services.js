@@ -3910,7 +3910,7 @@ if (typeof module != 'undefined' && module.exports){
                         if (err) {
                             get_document_using_script(doc_id,callback,true);
                         } else {
-                            callback(null,err,dat);
+                            callback.call(null,err,dat);
                         }
                     },false);
                 } else {
