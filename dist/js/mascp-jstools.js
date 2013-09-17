@@ -1051,7 +1051,7 @@ base.retrieve = function(agi,callback)
 
 (function(clazz) {
 
-    var get_db_data, store_db_data, search_service, clear_service, find_latest_data, data_timestamps, sweep_cache, cached_accessions, begin_transaction, end_transaction;
+    var get_db_data, store_db_data, search_service, clear_service, find_latest_data, data_timestamps, sweep_cache, cached_accessions, begin_transaction, end_transaction,first_accession;
     
     var max_age = 0, min_age = 0;
 
@@ -7587,44 +7587,6 @@ MASCP.ClustalRunner.Result.prototype.calculatePositionForSequence = function(idx
 })();
 //1265 (P)
 
-var draw_discontinuity = function(canvas,size) {
-    var top = -3;
-    var left = -2;
-    var group = canvas.group();
-    var line;
-    line = canvas.line(left+1,top+4,left+3,top+1);
-    line.setAttribute('stroke','#fcc');
-    line.setAttribute('stroke-width','10');
-    group.push(line);
-    line = canvas.line(left+1,top+6,left+3,top+3);
-    line.setAttribute('stroke','#fcc');
-    line.setAttribute('stroke-width','10');
-    group.push(line);
-    line = canvas.line(left+1,top+4,left+3,top+3);
-    line.setAttribute('stroke','#fcc');
-    line.setAttribute('stroke-width','5');
-    group.push(line);
-    line = canvas.line(left+1,top+5.3,left+1,top+5.8);
-    line.setAttribute('stroke','#fcc');
-    line.setAttribute('stroke-width','10');
-    group.push(line);
-    line = canvas.line(left+1,top+5.9,left+1.5,top+5.9);
-    line.setAttribute('stroke','#fcc');
-    line.setAttribute('stroke-width','10');
-    group.push(line);
-    var circle = canvas.circle(left+2.8,top+1.75,1);
-    circle.setAttribute('fill','#fff');
-    circle.setAttribute('stroke','#ccc');
-    circle.setAttribute('stroke-width','10');
-    group.push(circle);
-    var minus = canvas.text(left+2.25,top+2.25,(size || '÷')+"");
-    minus.setAttribute('fill','#ccc');
-    minus.setAttribute('font-size',75);
-    group.push(minus);
-    canvas.firstChild.nextSibling.appendChild(group);
-    return group;
-};
-
 MASCP.ClustalRunner.prototype.setupSequenceRenderer = function(renderer) {
     var self = this;
 
@@ -7729,6 +7691,44 @@ MASCP.ClustalRunner.prototype.setupSequenceRenderer = function(renderer) {
     var rendered_bits = [];
     var controller_name = 'isoform_controller';
     var group_name = 'isoforms';
+
+    var draw_discontinuity = function(canvas,size) {
+        var top = -3;
+        var left = -2;
+        var group = canvas.group();
+        var line;
+        line = canvas.line(left+1,top+4,left+3,top+1);
+        line.setAttribute('stroke','#fcc');
+        line.setAttribute('stroke-width','10');
+        group.push(line);
+        line = canvas.line(left+1,top+6,left+3,top+3);
+        line.setAttribute('stroke','#fcc');
+        line.setAttribute('stroke-width','10');
+        group.push(line);
+        line = canvas.line(left+1,top+4,left+3,top+3);
+        line.setAttribute('stroke','#fcc');
+        line.setAttribute('stroke-width','5');
+        group.push(line);
+        line = canvas.line(left+1,top+5.3,left+1,top+5.8);
+        line.setAttribute('stroke','#fcc');
+        line.setAttribute('stroke-width','10');
+        group.push(line);
+        line = canvas.line(left+1,top+5.9,left+1.5,top+5.9);
+        line.setAttribute('stroke','#fcc');
+        line.setAttribute('stroke-width','10');
+        group.push(line);
+        var circle = canvas.circle(left+2.8,top+1.75,1);
+        circle.setAttribute('fill','#fff');
+        circle.setAttribute('stroke','#ccc');
+        circle.setAttribute('stroke-width','10');
+        group.push(circle);
+        var minus = canvas.text(left+2.25,top+2.25,(size || '÷')+"");
+        minus.setAttribute('fill','#ccc');
+        minus.setAttribute('font-size',75);
+        group.push(minus);
+        canvas.firstChild.nextSibling.appendChild(group);
+        return group;
+    };
 
     var check_values = function(seq,idx,seqs) {
         var positives = 0;
@@ -10797,6 +10797,7 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
     
         var zoom_status = null;
         var zoomchange = function() {
+            var renderer = self;
                renderer._axis_height = parseInt( base_axis_height / renderer.zoom);
                var pattern = renderer._canvas.ownerDocument.getElementById('axis_pattern');
                thousand_mark_labels.forEach(function(label) {
@@ -11109,9 +11110,7 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
             jQuery(renderer).trigger('sequenceChange');
         });
         var canvas = createCanvasObject.call(this);
-        if (this._canvas) {
-            has_canvas = true;
-        } else {
+        if (! this._canvas) {
             if (typeof svgweb != 'undefined') {
                 svgweb.appendChild(canvas,this._container);
             } else {
@@ -11407,6 +11406,7 @@ var addBoxOverlayToElement = function(layerName,width,fraction,opts) {
 
 var addTextToElement = function(layerName,width,opts) {
     var canvas = this._renderer._canvas;
+    var renderer = this._renderer;
     if ( ! canvas ) {
         var orig_func = arguments.callee;
         var self = this;
@@ -12668,7 +12668,7 @@ MASCP.CondensedSequenceRenderer.Zoom = function(renderer) {
             self._canvas.parentNode.setAttribute('transform',curr_transform);
             jQuery(self._canvas).trigger('_anim_begin');
             if (document.createEvent) {
-                evObj = document.createEvent('Events');
+                var evObj = document.createEvent('Events');
                 evObj.initEvent('panstart',false,true);
                 self._canvas.dispatchEvent(evObj);
             }
@@ -14962,14 +14962,14 @@ GOMap.Diagram.Dragger.prototype.applyToElement = function(targetElement) {
                         window.requestAnimFrame(arguments.callee, targetElement);
 //                        targetElement._snapback = setTimeout(arguments.callee,10);
                         if (document.createEvent) {
-                            evObj = document.createEvent('Events');
+                            var evObj = document.createEvent('Events');
                             evObj.initEvent('panstart',false,true);
                             targetElement.dispatchEvent(evObj);
                         }
                     } else {
                         targetElement.setCurrentTranslateXY( (viewBoxScale * min_x), 0 );
                         if (document.createEvent) {
-                            evObj = document.createEvent('Events');
+                            var evObj = document.createEvent('Events');
                             evObj.initEvent('pan',false,true);
                             targetElement.dispatchEvent(evObj);
                         }
