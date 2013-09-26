@@ -3934,13 +3934,17 @@ if (typeof module != 'undefined' && module.exports){
                         callback.call(null,err);
                         return;
                     }
-                    get_document_using_script(doc_id,function(err,dat) {
-                        if (err) {
-                            get_document_using_script(doc_id,callback,true);
-                        } else {
-                            callback.call(null,err,dat);
-                        }
-                    },false);
+                    if ( is_spreadsheet ) {
+                        get_document_using_script(doc_id,function(err,dat) {
+                            if (err) {
+                                get_document_using_script(doc_id,callback,true);
+                            } else {
+                                callback.call(null,err,dat);
+                            }
+                        },false);
+                    } else {
+                        callback.call(null,err);
+                    }
                 } else {
                     callback.call(null,null,dat);
                 }
