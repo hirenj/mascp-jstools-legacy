@@ -15689,12 +15689,16 @@ GOMap.Diagram.addScrollBar = function(target,controlElement,scrollContainer) {
     bean.remove(scrollContainer,'scroll');
     bean.remove(scrollContainer,'mouseenter');
     bean.add(scrollContainer,'mouseenter',function() {
+
         disabled = true;
         scrollContainer.scrollLeft += 1;
         scrollContainer.scrollLeft -= 1;
         setTimeout(function() {
             disabled = false;
         },0);
+        bean.remove(scrollContainer,'scroll',scroll_func);
+        bean.add(scrollContainer,'scroll',scroll_func);
+
         scroller.cached_width = scroller.clientWidth;
     });
     var disabled = false;
@@ -15725,10 +15729,8 @@ GOMap.Diagram.addScrollBar = function(target,controlElement,scrollContainer) {
         var width = scroller.cached_width || scroller.clientWidth;
         var left_shift = parseInt(width * (target.getLeftPosition() / target.getTotalLength() ));
         bean.remove(scrollContainer,'scroll',scroll_func);
-        scrollContainer.scrollLeft = left_shift;
-        setTimeout(function(){
-            bean.remove(scrollContainer,'scroll',scroll_func);
-            bean.add(scrollContainer,'scroll',scroll_func);
+        setTimeout(function() {
+            scrollContainer.scrollLeft = left_shift;
         },0);
     });
 };
