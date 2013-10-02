@@ -8578,7 +8578,9 @@ MASCP.SequenceRenderer = (function() {
     return function(sequenceContainer) {
         if (typeof sequenceContainer !== 'undefined') {
             this._container = sequenceContainer;
-            this._container.style.position = 'relative';
+            if ( ! this._container.style.position) {
+                this._container.style.position = 'relative';
+            }
     //        this._container.style.width = '100%';
 
             jQuery(this).bind('sequenceChange', function(e){
@@ -12855,6 +12857,17 @@ MASCP.CondensedSequenceRenderer.Navigation = (function() {
 
         track_group.setAttribute('clip-path','url(#nav_clipping)');
 
+        this.disable = function() {
+            parent_canvas.style.display = 'none';
+            track_canvas.style.display = 'none';
+
+        };
+
+        this.enable = function() {
+            parent_canvas.style.display = 'block';
+            track_canvas.style.display = 'block';
+        }
+
         this.demote = function() {
             track_canvas.hide();
             return;
@@ -13440,7 +13453,7 @@ MASCP.CondensedSequenceRenderer.Navigation = (function() {
                 toggleMouseEvents.call(this,false);
             }
 
-            if (track_canvas.getAttribute('display') == 'none') {
+            if (track_canvas.getAttribute('display') == 'none' || track_canvas.style.display == 'none') {
                 return;
             }
 
