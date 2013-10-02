@@ -2707,6 +2707,7 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
         var delta = (zoom - curr)/50;
         jQuery(renderer).bind('zoomChange',function() {
             jQuery(renderer).unbind('zoomChange',arguments.callee);
+            delete renderer.zoomCenter;
             if (callback) {
                 callback.call(null);
             }
