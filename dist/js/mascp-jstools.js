@@ -10128,7 +10128,7 @@ var SVGCanvas = SVGCanvas || (function() {
 
         canvas.growingMarker = function(x,y,symbol,opts) {
             var container = document.createElementNS(svgns,'svg');
-            if ( ! opts.stretch ) {
+            if ( ! opts.stretch && ! (Array.isArray && Array.isArray(opts.content)) ) {
                 container.setAttribute('viewBox', '-50 -100 200 250');
                 container.setAttribute('preserveAspectRatio', 'xMinYMin meet');
             } else {
@@ -10143,7 +10143,7 @@ var SVGCanvas = SVGCanvas || (function() {
             var positioning_group = this.group();
             result.appendChild(positioning_group);
             positioning_group.appendChild(container);
-            if ( ! opts.stretch ) {
+            if ( ! opts.stretch && ! (Array.isArray && Array.isArray(opts.content)) ) {
                 container.setAttribute('width','200');
                 container.setAttribute('height','250');
             }
@@ -10174,7 +10174,7 @@ var SVGCanvas = SVGCanvas || (function() {
                 // this.setAttribute('height',height);
                 var scale_val = setHeight.call(this,height);
                 this.setAttribute('height',height);
-                var top_offset = this.offset;
+                var top_offset = this.offset || 0;
                 var widget_height = parseFloat(this.firstChild.firstChild.getAttribute('height'));
                 if ( ! this.angle ) {
                     this.angle = 0;
@@ -10240,10 +10240,42 @@ var SVGCanvas = SVGCanvas || (function() {
             if (typeof symbol == 'string') {
                 if (symbol.match(/^(:?https?:)?\//)) {
                     marker.contentElement = this.use(symbol,-r,0,r,r);
-                    marker.contentElement.setAttribute('pointer-events','none');
                 } else {
                     marker.contentElement = this.text_circle(0,0.5*r,1.75*r,symbol,opts);
                 }
+                marker.push(marker.contentElement);
+            } else if (Array.isArray && Array.isArray(symbol)) {
+                marker.contentElement = this.group();
+                var phase = (2 * Math.PI / symbol.length);
+                var needs_stretch = opts.stretch;
+                symbol.forEach(function(symb,i) {
+                    var new_el;
+                    var x_pos = 0.5 + (3 * Math.cos(i*phase));
+                    var y_pos = 0.5 + (3 * Math.sin(i*phase));
+
+                    var rotate_amount = 360*i/symbol.length;
+                    if (needs_stretch) {
+                        if (rotate_amount > 90 && rotate_amount < 270 ) {
+                            opts.stretch = 'left';
+                        } else {
+                            opts.stretch = 'right';
+                        }
+                    }
+
+                    if (rotate_amount > 90 && rotate_amount < 270) {
+                        rotate_amount = 180 + rotate_amount;
+                    }
+                    if (symb.match(/^(:?https?:)?\//)) {
+                        new_el = canvas.use(symb,(x_pos - 0.5)*r,(y_pos - 0.5)*r,r,r);
+                        new_el.setAttribute('pointer-events','none');
+                    } else {
+                        new_el = canvas.text_circle(x_pos*r,y_pos*r,1.75*r,symb,opts);
+                    }
+                    var curr_transform = new_el.getAttribute('transform');
+                    curr_transform = curr_transform + ' rotate('+(rotate_amount)+','+0*r*RS+','+y_pos*r*RS+')';
+                    new_el.setAttribute('transform',curr_transform);
+                    marker.contentElement.push(new_el);
+                });
                 marker.push(marker.contentElement);
             } else {
                 marker.contentElement = this.group();
@@ -11867,6 +11899,7 @@ MASCP.CondensedSequenceRenderer.prototype.addUnderlayRenderer = function(underla
 MASCP.CondensedSequenceRenderer.prototype.renderObjects = function(track,objects) {
     var renderer = this;
     objects.forEach(function(object) {
+        var click_reveal;
         if (object.type === "box") {
             if (object.aa) {
                 renderer.getAA(parseInt(object.aa)).addBoxOverlay(track,parseInt(object.width),1,object.options);
@@ -11876,7 +11909,12 @@ MASCP.CondensedSequenceRenderer.prototype.renderObjects = function(track,objects
         }
         if (object.type == "marker") {
             var content = (object.options || {}).content;
-            if (typeof(content) == 'object') {
+            if (Array.isArray && Array.isArray(content)) {
+                click_reveal = renderer.getAA(parseInt(object.aa)).addToLayer(track,object.options);
+                click_reveal = click_reveal[1];
+                click_reveal.style.display = 'none';
+                object.options.content = object.options.alt_content;
+            } else if (typeof(content) == 'object') {
                 var content_el;
                 if (content.type == "circle") {
                     content_el = renderer._canvas.circle(-0.5,-0.5,1,1);
@@ -11888,7 +11926,17 @@ MASCP.CondensedSequenceRenderer.prototype.renderObjects = function(track,objects
                 });
                 object.options.content = content_el;
             }
-            renderer.getAA(parseInt(object.aa)).addToLayer(track,object.options);
+            var added = renderer.getAA(parseInt(object.aa)).addToLayer(track,object.options);
+            if (click_reveal) {
+                added[1].addEventListener('click',function() {
+                    if (click_reveal.style.display === 'none') {
+                        click_reveal.style.display = 'block';
+                    } else {
+                        click_reveal.style.display = 'none';
+                    }
+                    renderer.refresh();
+                },false);
+            }
         }
     });
 };
