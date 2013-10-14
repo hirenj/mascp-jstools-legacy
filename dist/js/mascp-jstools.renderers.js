@@ -1961,6 +1961,7 @@ var SVGCanvas = SVGCanvas || (function() {
             } else if (Array.isArray && Array.isArray(symbol)) {
                 marker.contentElement = this.group();
                 var phase = (2 * Math.PI / symbol.length);
+                phase -= (Math.PI / 2);
                 var needs_stretch = opts.stretch;
                 symbol.forEach(function(symb,i) {
                     var new_el;
@@ -1968,6 +1969,7 @@ var SVGCanvas = SVGCanvas || (function() {
                     var y_pos = 0.5 + (3 * Math.sin(i*phase));
 
                     var rotate_amount = 360*i/symbol.length;
+                    rotate_amount -= 90;
                     if (needs_stretch) {
                         if (rotate_amount > 90 && rotate_amount < 270 ) {
                             opts.stretch = 'left';
