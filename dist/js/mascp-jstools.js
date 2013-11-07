@@ -4489,13 +4489,38 @@ MASCP.GoogledataReader.prototype.getSyncableFile = function(file,callback) {
 
 MASCP.GoogledataReader.prototype.addWatchedDocument = function(prefs_domain,doc_id,parser_function,callback) {
     var self = this;
+
+    if (! parser_function) {
+        parser_function = function(datablock){
+            for (var key in datablock.data) {
+              if (key == "" || key.match(/\s/)) {
+                delete datablock.data[key];
+              } else {
+                var dat = datablock.data[key];
+                delete datablock.data[key];
+                datablock.data[key.toLowerCase()] = {
+                  "data" : dat,
+                  "retrieved" : datablock.retrieved,
+                  "etag" : datablock.etag,
+                  "title" : datablock.title
+                };
+              }
+            }
+            delete datablock.retrieved;
+            delete datablock.etag;
+            delete datablock.title;
+            return datablock.data;
+        };
+    }
+
     var reader = (new MASCP.GoogledataReader()).createReader(doc_id,parser_function);
 
     reader.bind('error',function(err) {
         callback.call(null,err);
     });
 
-    reader.bind('ready',function() {
+
+    reader.bind('ready',function(datablock) {
         var title = this.title;
         self.getPreferences(prefs_domain,function(err,prefs) {
             if (err) {
@@ -4506,10 +4531,35 @@ MASCP.GoogledataReader.prototype.addWatchedDocument = function(prefs_domain,doc_
             if ( ! prefs.user_datasets ) {
                 prefs.user_datasets = {};
             }
+            var done_setup = false;
 
-            prefs.user_datasets[reader.datasetname] = prefs.user_datasets[reader.datasetname] || {};
-            prefs.user_datasets[reader.datasetname].parser_function = parser_function.toString();
-            prefs.user_datasets[reader.datasetname].title = title;
+            if (datablock && datablock.liveClass) {
+                done_setup = true;
+                prefs.user_datasets[datablock.liveClass] = prefs.user_datasets[datablock.liveClass] || {};
+                prefs.user_datasets[datablock.liveClass].render_options = {};
+                prefs.user_datasets[datablock.liveClass].title = title;
+                prefs.user_datasets[datablock.liveClass].type = "liveClass";
+            }
+
+            if (datablock && datablock.gatorURL) {
+                done_setup = true;
+                prefs.user_datasets[datablock.gatorURL] = prefs.user_datasets[datablock.gatorURL] || {};
+                prefs.user_datasets[datablock.gatorURL].title = title;
+                prefs.user_datasets[datablock.gatorURL].type = "gatorURL";
+                if (datablock && datablock.defaults) {
+                    prefs.user_datasets[datablock.gatorURL].render_options = datablock.defaults;
+                }
+            }
+
+            if ( ! done_setup ) {
+                prefs.user_datasets[reader.datasetname] = prefs.user_datasets[reader.datasetname] || {};
+                prefs.user_datasets[reader.datasetname].parser_function = parser_function.toString();
+                prefs.user_datasets[reader.datasetname].title = title;
+                prefs.user_datasets[reader.datasetname].type = "dataset";
+                if (datablock && datablock.defaults) {
+                    prefs.user_datasets[reader.datasetname].render_options = datablock.defaults;
+                }
+            }
 
             self.writePreferences(prefs_domain,function(err,prefs) {
                 if (err) {
@@ -4583,7 +4633,28 @@ MASCP.GoogledataReader.prototype.readWatchedDocuments = function(prefs_domain,ca
         for (var set in sets) {
           (function() {
             var pref = sets[set];
-
+            if ( sets[set].type == "liveClass" ) {
+                var reader_class = MASCP[set];
+                callback.call(null,null,pref,new reader_class());
+                return;
+            }
+            if ( sets[set].type == "gatorURL" ) {
+                var reader = new MASCP.UserdataReader(null, set);
+                reader.datasetname = pref.title;
+                reader.requestData = function() {
+                    var agi = this.agi.toLowerCase();
+                    return {
+                        type: "GET",
+                        dataType: "json",
+                        url : set+agi,
+                        data: { 'agi'       : agi,
+                                'service'   : this.datasetname
+                        }
+                    };
+                };
+                callback.call(null,null,pref,reader);
+                return;
+            }
             if ( ! sets[set].parser_function ) {
               return;
             }
@@ -7368,14 +7439,14 @@ MASCP.UserdataReader.prototype.setData = function(name,data) {
         console.log("Data not ready! Waiting for ready state");
         var self = this;        
         bean.add(self,'ready',function() {
-            bend.remove(self,'ready',arguments.callee);
+            bean.remove(self,'ready',arguments.callee);
             self.retrieve(id,cback);
         });
     };
     if (accs.length < 1) {
         setTimeout(function() {
             self.retrieve = retrieve;
-            bean.fire(self,'ready');
+            bean.fire(self,'ready',[data]);
         },0);
         return;
     }
@@ -7396,7 +7467,7 @@ MASCP.UserdataReader.prototype.setData = function(name,data) {
                     self.retrieve = retrieve;
                     trans(function(err) {
                         if ( ! err ) {
-                            bean.fire(self,'ready');
+                            bean.fire(self,'ready',[data]);
                         } else {
                             bean.fire(self,'error');
                         }
