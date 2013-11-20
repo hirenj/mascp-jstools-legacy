@@ -563,6 +563,89 @@ MASCP.cloneService = function(service,name) {
     return new_service;
 };
 
+
+(function() {
+    var service_from_config = function(set,pref,callback) {
+        if ( ! pref ) {
+            return;
+        }
+        if ( pref.type == "liveClass" ) {
+            var reader_class = MASCP[set];
+            callback.call(null,null,pref,new reader_class());
+            return;
+        }
+        if ( pref.type == "gatorURL" ) {
+            var reader = new MASCP.UserdataReader(null, set);
+            reader.datasetname = pref.title;
+            reader.requestData = function() {
+                var agi = this.agi.toLowerCase();
+                var gatorURL = set.slice(-1) == '/' ? set+agi : set+'/'+agi;
+                return {
+                    type: "GET",
+                    dataType: "json",
+                    url : gatorURL,
+                    data: { 'agi'       : agi,
+                            'service'   : this.datasetname
+                    }
+                };
+            };
+            callback.call(null,null,pref,reader);
+            return;
+        }
+
+
+        // If we wish to load complete datasets
+        // and store them browser-side, we need
+        // a parser function to grab the dataset.
+
+        if ( ! pref.parser_function ) {
+          return;
+        }
+
+        if (JSandbox) {
+          var sandbox = new JSandbox();
+          var parser;
+          sandbox.exec('var sandboxed_parser = '+pref.parser_function+';',function() {
+            var box = this;
+            parser = function(datablock,cback) {
+                box.eval({ "data" : "sandboxed_parser(datablock)",
+                            "input" : {"datablock" : datablock },
+                            "callback" : function(r) {
+                                cback.call(null,r);
+                            }
+                        });
+            };
+            parser.callback = true;
+          });
+        } else {
+            console.log("No sandbox support - not trying to get data for "+pref.title);
+            callback.call(null,{"error" : "No sandbox support"});
+            return;
+        }
+
+        // Right now we only download stuff from Google Drive
+        // We should be able to download stuff from other datasources too
+
+        var a_reader = (new MASCP.GoogledataReader()).createReader(set,parser);
+
+        a_reader.bind('ready',function() {
+            callback.call(null,null,pref,a_reader);
+        });
+        a_reader.bind('error',function(err) {
+            callback.call(null,{"error" : err },pref);
+        });
+    };
+
+    MASCP.IterateServicesFromConfig = function(configuration,callback) {
+        if (! configuration ) {
+            return;
+        }
+        for (var set in configuration) {
+            service_from_config(set,configuration[set],callback);
+        }
+    };
+})();
+
 MASCP.extend = function(in_hsh,hsh) {
     for (var i in hsh) {
         if (true) {
@@ -3478,13 +3561,33 @@ var get_file_by_filename = function(filename,mime,callback) {
     });
 };
 
+var check_current_session = function(callback) {
+    if (! gapi || ! gapi.auth || ! gapi.auth.authorize) {
+        callback.call(null,{ "cause" : "No google auth library"});
+        return;
+    }
+    if (! MASCP.GOOGLE_CLIENT_ID) {
+        // We can't have a valid login here, so lets just say we don't
+        // have a valid session.
+        callback.call(null,null,false);
+    }
+    gapi.auth.checkSessionState({'client_id' : MASCP.GOOGLE_CLIENT_ID, 'session_state' : null},function(loggedOut) {
+        callback.call(null,null,loggedOut);
+    });
+};
+
+
 var get_file = function(file,mime,callback) {
     if (! gapi || ! gapi.auth || ! gapi.auth.authorize) {
         callback.call(null,{ "cause" : "No google auth library"});
         return;
     }
 
-    gapi.auth.checkSessionState({'client_id' : MASCP.GOOGLE_CLIENT_ID, 'session_state' : null},function(loggedOut) {
+    check_current_session(function(err,loggedOut) {
+        if (err) {
+            callback.call(null,err);
+            return;
+        }
         if (loggedOut) {
             callback.call(null,{"cause" : "No user event"});
             return;
@@ -4359,7 +4462,15 @@ if (typeof module != 'undefined' && module.exports){
         } else {
             get_document_using_script(doc_id,function(err,dat){
                 if (err) {
-                    gapi.auth.checkSessionState({'client_id' : MASCP.GOOGLE_CLIENT_ID, 'session_state' : null},function(loggedOut) {
+                    check_current_session(function(err,loggedOut) {
+                        if (err) {
+                            callback.call(null,err);
+                            return;
+                        }
+
+                        // If we have a current session active
+                        // we can continue trying the super-authed
+                        // document retrieval
                         if (loggedOut == false) {
                             basic_get_document(doc,etag,function(err,dat) {
                                 if (err) {
@@ -4373,6 +4484,9 @@ if (typeof module != 'undefined' && module.exports){
                                 }
                             });
                         } else {
+                            // If we don't have a valid session AND we failed to retrieve
+                            // the document using the script tag, we're in that semi-logged-in state
+                            // We need to give up, and get the user to log in again.
                             callback.call(null,{"cause" : "Google session timed out"});
                         }
                     });
@@ -4412,6 +4526,8 @@ var setup = function(renderer) {
         render_site.call(this,renderer);
     });
 };
+
+MASCP.GoogledataReader.isLoggedOut = check_current_session;
 
 MASCP.GoogledataReader.prototype.getDocumentList = get_document_list;
 
@@ -4629,48 +4745,7 @@ MASCP.GoogledataReader.prototype.readWatchedDocuments = function(prefs_domain,ca
           callback.call(null,{ "status" : "preferences", "original_error" : err });
           return;
         }
-        var sets = prefs.user_datasets;
-        for (var set in sets) {
-          (function() {
-            var pref = sets[set];
-            if ( sets[set].type == "liveClass" ) {
-                var reader_class = MASCP[set];
-                callback.call(null,null,pref,new reader_class());
-                return;
-            }
-            if ( sets[set].type == "gatorURL" ) {
-                var reader = new MASCP.UserdataReader(null, set);
-                reader.datasetname = pref.title;
-                reader.requestData = function() {
-                    var agi = this.agi.toLowerCase();
-                    var gatorURL = set.slice(-1) == '/' ? set+agi : set+'/'+agi;
-                    return {
-                        type: "GET",
-                        dataType: "json",
-                        url : gatorURL,
-                        data: { 'agi'       : agi,
-                                'service'   : this.datasetname
-                        }
-                    };
-                };
-                callback.call(null,null,pref,reader);
-                return;
-            }
-            if ( ! sets[set].parser_function ) {
-              return;
-            }
-
-            var parser = eval("("+sets[set].parser_function+")");
-            var a_reader = self.createReader(set,parser);
-
-            a_reader.bind('ready',function() {
-                callback.call(null,null,pref,a_reader);
-            });
-            a_reader.bind('error',function(err) {
-                callback.call(null,{"error" : err });
-            });
-          })();
-        }
+        MASCP.IterateServicesFromConfig(sets,prefs.user_datasets);
     });
 };
 
@@ -7396,6 +7471,15 @@ MASCP.UserdataReader.prototype.setData = function(name,data) {
         dataset = apply_map.call(this,data);
     }
     if (typeof this.map == 'function') {
+
+        if (this.map.callback) {
+            var self_func = arguments.callee;
+            this.map(data,function(parsed) {
+                self.map = function(d) { return (d); };
+                self.call(arguments.callee,name,parsed);
+            });
+            return;
+        }
         dataset = this.map(data);
     }
 
@@ -11777,9 +11861,16 @@ var addShapeToElement = function(layerName,width,opts) {
 
     this._renderer._layer_containers[layerName].push(shape);
     shape.setAttribute('class',layerName);
-    shape.style.strokeWidth = '0px';
     shape.setAttribute('visibility', 'hidden');
     shape.setAttribute('fill',opts.fill || MASCP.layers[layerName].color);
+    if (opts.stroke) {
+        shape.setAttribute('stroke',opts.stroke);
+    }
+    if (opts.stroke_width) {
+        shape.setAttribute('stroke-width',renderer._RS*opts.stroke_width);
+    } else {
+        shape.style.strokeWidth = '0';
+    }
     shape.position_start = this._index;
     shape.position_end = this._index + width;
     return shape;
@@ -12024,15 +12115,124 @@ MASCP.CondensedSequenceRenderer.prototype.addUnderlayRenderer = function(underla
     zoomFunctions.push(underlayFunc);
 };
 
+/*
+          var group = [];
+          for (i = 0; i < sites.length; i++) {
+              var current = sites[i], next = null;
+              if ( ! current ) {
+                continue;
+              }
+              if (sites[i+1]) {
+                next = sites[i+1];
+              }
+              if ( ! do_grouping || (! next || ((next - current) > 10) || renderer.sequence.substring(current,next-1).match(/[ST]/)) ) {
+                if (group.length < 3) {
+                  group.push(current);
+                  group.forEach(function(site){
+                    renderer.getAA(site).addToLayer(layer,{"content" : (offset < 1) ? renderer.galnac() : renderer.light_galnac(), "offset" : offset, "height" : 9,  "bare_element" : true });
+                  });
+                } else {
+                  group.push(current);
+                  group.forEach(function(site){
+                    renderer.getAA(site).addToLayer(layer,{"content" : (offset < 1) ? renderer.galnac() : renderer.light_galnac(), "offset" : offset, "height" : 9,  "bare_element" : true })[1].zoom_level = 'text';
+                  });
+                  var rect = renderer.getAA(group[0]).addShapeOverlay(layer,current-group[0]+1,{ "shape" : "roundrect", "offset" : offset - 4.875, "height" : 9.75 });
+                  var a_galnac = (offset < 1) ? renderer.galnac() : renderer.light_galnac();
+                  rect.setAttribute('fill',a_galnac.getAttribute('fill'));
+                  rect.setAttribute('stroke',a_galnac.getAttribute('stroke'));
+                  rect.setAttribute('stroke-width',70);
+                  a_galnac.parentNode.removeChild(a_galnac);
+                  rect.removeAttribute('style');
+                  rect.setAttribute('rx','120');
+                  rect.setAttribute('ry','120');
+                  rect.zoom_level = 'summary';
+                }
+                group = [];
+              } else {
+                group.push(current);
+              }
+          }
+*/
+
+var mark_groups = function(renderer,objects) {
+    var group = [];
+    var new_objects = [];
+    for (i = 0; i < objects.length; i++) {
+      var current = objects[i], next = null;
+      if ( ! current ) {
+        continue;
+      }
+      if (objects[i+1]) {
+        next = objects[i+1];
+      }
+      if ( (! next || (parseInt(next.aa) - parseInt(current.aa) > 10) || renderer.sequence.substring(current,next-1).match(/[ST]/)) ) {
+        if (group.length < 3) {
+          group.push(current);
+          group.forEach(function(site){
+            // We don't want to do anything to these guys, render as usual.
+//            renderer.getAA(site).addToLayer(layer,{"content" : (offset < 1) ? renderer.galnac() : renderer.light_galnac(), "offset" : offset, "height" : 9,  "bare_element" : true });
+          });
+        } else {
+          group.push(current);
+          group.forEach(function(site){
+            site.options.zoom_level = 'text';
+          });
+          new_objects.push({
+            'aa' : group[0].aa,
+            'type' : 'shape',
+            'width' : parseInt(current.aa)-parseInt(group[0].aa)+1,
+            'options' : {   'zoom_level' : 'summary',
+                            'shape' : 'roundrect',
+                            'fill' : group[0].coalesce.fill,
+                            'stroke' : group[0].coalesce.stroke,
+                            'stroke_width' : group[0].coalesce.stroke_width,
+                            'height' : group[0].options.height,
+                            'offset' : group[0].options.offset
+                        }
+            });
+          // var rect = renderer.getAA(group[0]).addShapeOverlay(layer,current-group[0]+1,{ "shape" : "roundrect", "offset" : offset - 4.875, "height" : 9.75 });
+          // var a_galnac = (offset < 1) ? renderer.galnac() : renderer.light_galnac();
+          // rect.setAttribute('fill',a_galnac.getAttribute('fill'));
+          // rect.setAttribute('stroke',a_galnac.getAttribute('stroke'));
+          // rect.setAttribute('stroke-width',70);
+          // a_galnac.parentNode.removeChild(a_galnac);
+          // rect.removeAttribute('style');
+          // rect.setAttribute('rx','120');
+          // rect.setAttribute('ry','120');
+          // rect.zoom_level = 'summary';
+        }
+        group = [];
+      } else {
+        group.push(current);
+      }
+    }
+    new_objects.forEach(function(obj) {
+        objects.push(obj);
+    });
+};
+
+
 MASCP.CondensedSequenceRenderer.prototype.renderObjects = function(track,objects) {
     var renderer = this;
+    if (objects.length > 0 && objects[0].coalesce ) {
+        mark_groups(renderer,objects);
+    }
+    console.log(objects);
     objects.forEach(function(object) {
         var click_reveal;
+        var rendered;
         if (object.type === "box") {
             if (object.aa) {
-                renderer.getAA(parseInt(object.aa)).addBoxOverlay(track,parseInt(object.width),1,object.options);
+                rendered = renderer.getAA(parseInt(object.aa)).addBoxOverlay(track,parseInt(object.width),1,object.options);
             } else if (object.peptide) {
-                renderer.getAminoAcidsByPeptide(object.peptide).addToLayer(track,object.options);
+                rendered = renderer.getAminoAcidsByPeptide(object.peptide).addToLayer(track,object.options);
+            }
+        }
+        if (object.type == "shape") {
+            if (object.aa) {
+                rendered = renderer.getAA(parseInt(object.aa)).addShapeOverlay(track,parseInt(object.width),object.options);
+            } else if (object.peptide) {
+                rendered = renderer.getAminoAcidsByPeptide(object.peptide)[0].addShapeOverlay(track, object.peptide.length, object.options);
             }
         }
         if (object.type == "marker") {
@@ -12082,6 +12282,10 @@ MASCP.CondensedSequenceRenderer.prototype.renderObjects = function(track,objects
                     renderer.refresh();
                 },false);
             }
+            rendered = added[1];
+        }
+        if ((object.options || {}).zoom_level) {
+            rendered.zoom_level = object.options.zoom_level;
         }
     });
 };
