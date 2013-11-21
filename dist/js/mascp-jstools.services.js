@@ -227,7 +227,7 @@ MASCP.cloneService = function(service,name) {
         }
         if ( pref.type == "liveClass" ) {
             var reader_class = MASCP[set];
-            callback.call(null,null,pref,new reader_class());
+            callback.call(null,null,pref,new reader_class(null,pref.url));
             return;
         }
         if ( pref.type == "gatorURL" ) {
@@ -7504,8 +7504,9 @@ MASCP.ClustalRunner.prototype.setupSequenceRenderer = function(renderer) {
         var old = reader.gotResult;
         reader.gotResult = function() {
             var index = 0;
+            var wanted_id = reader.acc || reader.agi || "";
             for (var i = 0; i < self.sequences.length; i++) {
-                if (self.sequences[i].agi && self.sequences[i].agi.toUpperCase() == reader.agi) {
+                if (self.sequences[i].agi && self.sequences[i].agi.toUpperCase() == wanted_id.toUpperCase()) {
                     index = i;
                 }
             }
