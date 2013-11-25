@@ -264,15 +264,17 @@ MASCP.cloneService = function(service,name) {
           sandbox.exec('var sandboxed_parser = '+pref.parser_function+';',function() {
             var box = this;
             parser = function(datablock,cback) {
-                box.eval({ "data" : "sandboxed_parser(datablock)",
+                box.eval({ "data" : "sandboxed_parser(input.datablock)",
                             "input" : {"datablock" : datablock },
                             "callback" : function(r) {
                                 cback.call(null,r);
                                 console.log("Terminating");
                                 box.terminate();
+                            },
+                            "onerror" : function() {
+                                console.log(arguments);
                             }
                         });
-                sandbox.terminate();
             };
             parser.callback = true;
             parser.terminate = function() {
@@ -7171,7 +7173,7 @@ MASCP.UserdataReader.prototype.setData = function(name,data) {
             var self_func = arguments.callee;
             this.map(data,function(parsed) {
                 self.map = function(d) { return (d); };
-                self.call(arguments.callee,name,parsed);
+                self_func.call(self,name,parsed);
             });
             return;
         }
