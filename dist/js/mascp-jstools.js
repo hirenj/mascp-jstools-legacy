@@ -11037,6 +11037,12 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
         return canvas;
     };
 
+    var wheel_fn = function(e) {
+        console.log("Capturing in navigation");
+        e.stopPropagation();
+        return true;
+    };
+
     var addNav = function(nav_canvas) {
         this.navigation = new MASCP.CondensedSequenceRenderer.Navigation(nav_canvas,this);
         var nav = this.navigation;
@@ -11055,6 +11061,10 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
         bean.add(this._canvas,'panend',show_chrome);
         jQuery(this._canvas).bind('_anim_begin',hide_chrome);
         jQuery(this._canvas).bind('_anim_end',show_chrome);
+        this._canvas.addEventListener('DOMMouseScroll',wheel_fn,false);
+        this._canvas.addEventListener('wheel',wheel_fn,false);
+        this._canvas.onmousewheel = wheel_fn;
+
         }
     };
     var drawAminoAcids = function() {
