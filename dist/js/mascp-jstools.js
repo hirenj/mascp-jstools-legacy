@@ -605,18 +605,18 @@ MASCP.cloneService = function(service,name) {
         if (JSandbox) {
           var sandbox = new JSandbox();
           var parser;
-          sandbox.exec('var sandboxed_parser = '+pref.parser_function+';',function() {
+          sandbox.eval('var sandboxed_parser = '+pref.parser_function+';',function() {
             var box = this;
             parser = function(datablock,cback) {
                 box.eval({ "data" : "sandboxed_parser(input.datablock)",
                             "input" : {"datablock" : datablock },
                             "callback" : function(r) {
                                 cback.call(null,r);
-                                console.log("Terminating");
                                 box.terminate();
                             },
-                            "onerror" : function() {
-                                console.log(arguments);
+                            "onerror" : function(err) {
+                                console.log("Parser error");
+                                cback.call(null,null);
                             }
                         });
             };
@@ -630,7 +630,42 @@ MASCP.cloneService = function(service,name) {
 
             // Right now we only download stuff from Google Drive
             // We should be able to download stuff from other datasources too
+            if (/^http/.test(set)) {
+                MASCP.Service.request(set,function(err,data) {
+                    if (err) {
+                        callback.call(null,{"error" : err},pref);
+                        return;
+                    }
 
+                    var reader = new MASCP.UserdataReader(null,null);
+                    reader.datasetname = pref.title;
+
+                    reader.bind('ready',function() {
+                        if (parser) {
+                            parser.terminate();
+                        }
+                        callback.call(null,null,pref,reader);
+                    });
+
+                    reader.bind('error',function(err) {
+                        if (parser) {
+                            parser.terminate();
+                        }
+                        callback.call(null,{"error" : err},pref);
+                    });
+
+                    MASCP.Service.ClearCache(reader,null,function(error) {
+                        if (error) {
+                            bean.fire(reader,"error",[error]);
+                            return;
+                        }
+                        reader.map = parser;
+                        reader.setData(pref.title,data);
+                    });
+
+                });
+                return;
+            }
             var a_reader = (new MASCP.GoogledataReader()).createReader(set,parser);
 
             a_reader.bind('ready',function() {
@@ -11602,8 +11637,8 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
         if (this._container_canvas.getElementById('defs_'+namespace)){
             return;
         }
-        // this._container_canvas.appendChild(new_owner.createElement('defs'));
-        // this._container_canvas.lastChild.setAttribute('id','defs_'+namespace);
+        this._container_canvas.appendChild(new_owner.createElement('defs'));
+        this._container_canvas.lastChild.setAttribute('id','defs_'+namespace);
         var defs_block = this._container_canvas.lastChild;
 
         if ( ! new_owner._importNode ) {
@@ -11611,7 +11646,7 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
         }
         var new_nodes = new_owner._importNode(doc,true);
         if (typeof XPathResult !== 'undefined') {
-            var iterator = new_owner.evaluate('//svg:defs/*',new_nodes,function(ns) { console.log(ns); return svgns; } ,XPathResult.ANY_TYPE);
+            var iterator = new_owner.evaluate('//svg:defs/*',new_nodes,function(ns) { return svgns; } ,XPathResult.ANY_TYPE);
             var el = iterator.iterateNext();
             var to_append = [];
             while (el) {
