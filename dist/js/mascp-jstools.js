@@ -7978,6 +7978,9 @@ MASCP.ClustalRunner.prototype.setupSequenceRenderer = function(renderer) {
                     if ( ! el ) {
                         el = { "_index" : -100, "_renderer" : renderer };
                     }
+                    if ( ! el['_renderer']) {
+                        el['_renderer'] = renderer;
+                    }
 
                     result._index = el._index;
 
