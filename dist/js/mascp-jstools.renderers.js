@@ -2429,7 +2429,7 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
                                                                 'style':'fill: url(#right_fade);'});
 
 
-            jQuery(canv).bind('pan',function() {
+            bean.add(canv,'pan',function() {
                 if (canv.currentTranslate.x >= 0) {
                     left_fade.setAttribute('visibility','hidden');
                 } else {
@@ -2522,7 +2522,7 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
         };
 
         if ( ! MASCP.IE ) {
-        jQuery(this._canvas).bind('panstart',hide_chrome);
+        bean.add(this._canvas,'panstart',hide_chrome);
         bean.add(this._canvas,'panend',show_chrome);
         bean.add(this._canvas,'_anim_begin',hide_chrome);
         bean.add(this._canvas,'_anim_end',show_chrome);
