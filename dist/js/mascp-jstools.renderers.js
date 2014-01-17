@@ -2546,9 +2546,9 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
             aas.attr({'y' : 0.5*renderer._axis_height*renderer._RS});
         };
         var canvas = renderer._canvas;
-        canvas.addEventListener('zoomChange', zoomchange, false);
+        bean.add(canvas,'zoomChange', zoomchange);
         bean.add(aas,'removed',function() {
-            canvas.removeEventListener('zoomChange',zoomchange);
+            bean.remove(canvas,'zoomChange',zoomchange);
         });
         return aas;
     };
@@ -2710,9 +2710,9 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
                    }
                }
         };
-        canvas.addEventListener('zoomChange', zoomchange, false);
+        bean.add(canvas,'zoomChange', zoomchange);
         bean.add(axis,'removed',function() {
-            canvas.removeEventListener('zoomChange',zoomchange);
+            bean.remove(canvas,'zoomChange',zoomchange);
             var remover = function(el) {
                 if (el.parentNode) {
                     el.parentNode.removeChild(el);
@@ -4060,11 +4060,11 @@ MASCP.CondensedSequenceRenderer.prototype.addTextTrack = function(seq,container)
         container.panevents = true;
     }
        
-    canvas.addEventListener('zoomChange', zoomchange,false);
+    bean.add(canvas,'zoomChange', zoomchange,false);
     bean.add(amino_acids[0],'removed',function() {
         canvas.removeEventListener('panstart',panstart);
         bean.remove(canvas,'panend',panend);
-        canvas.removeEventListener('zoomChange',zoomchange);
+        bean.remove(canvas,'zoomChange',zoomchange);
         delete container.panevents;
     });
     return amino_acids;
@@ -4824,6 +4824,7 @@ MASCP.CondensedSequenceRenderer.Zoom = function(renderer) {
             
                 if (self._canvas) {
                     self._canvas.zoom = parseFloat(zoom_level);
+<<<<<<< HEAD
                     if (document.createEvent) {
                         var evObj = document.createEvent('Events');
                         evObj.initEvent('zoomChange',false,true);
@@ -4831,6 +4832,9 @@ MASCP.CondensedSequenceRenderer.Zoom = function(renderer) {
                     } else {
                         jQuery(self._canvas).trigger('zoomChange');
                     }
+=======
+                    bean.fire(self._canvas,'zoomChange');
+>>>>>>> Try out removing native events for canvas
                 }
                 jQuery(self).trigger('zoomChange');
             };
