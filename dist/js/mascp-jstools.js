@@ -14810,17 +14810,7 @@ MASCP.CondensedSequenceRenderer.Zoom = function(renderer) {
             
                 if (self._canvas) {
                     self._canvas.zoom = parseFloat(zoom_level);
-<<<<<<< HEAD
-                    if (document.createEvent) {
-                        var evObj = document.createEvent('Events');
-                        evObj.initEvent('zoomChange',false,true);
-                        self._canvas.dispatchEvent(evObj);
-                    } else {
-                        jQuery(self._canvas).trigger('zoomChange');
-                    }
-=======
                     bean.fire(self._canvas,'zoomChange');
->>>>>>> Try out removing native events for canvas
                 }
                 jQuery(self).trigger('zoomChange');
             };
@@ -16583,7 +16573,6 @@ GOMap.Diagram.prototype.addEventListener = function(evt,func) {
 (function() {
 
 var zoomChange = function() {
-    console.log(this._events);
     if ( ! this._events || ! this._events.zoomChange ) {
         return;
     }
