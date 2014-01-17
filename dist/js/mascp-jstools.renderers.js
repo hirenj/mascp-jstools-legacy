@@ -2756,8 +2756,8 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
         var renderer = this;
         var curr = renderer.zoom;
         var delta = (zoom - curr)/50;
-        jQuery(renderer).bind('zoomChange',function() {
-            jQuery(renderer).unbind('zoomChange',arguments.callee);
+        bean.add(renderer,'zoomChange',function() {
+            bean.remove(renderer,'zoomChange',arguments.callee);
             delete renderer.zoomCenter;
             if (callback) {
                 callback.call(null);
@@ -3712,7 +3712,7 @@ var zoomFunctions = [];
 
 MASCP.CondensedSequenceRenderer.prototype.addUnderlayRenderer = function(underlayFunc) {
     if (zoomFunctions.length == 0) {
-        this.bind('zoomChange',function() {
+        bean.add(this,'zoomChange',function() {
             for (var i = zoomFunctions.length - 1; i >=0; i--) {
                 zoomFunctions[i].call(this, this.zoom, this._canvas);
             }
@@ -4804,7 +4804,8 @@ MASCP.CondensedSequenceRenderer.Zoom = function(renderer) {
                 bean.fire(self._canvas,'panend');
                 bean.fire(self._canvas,'_anim_end');
 
-                jQuery(self._canvas).one('zoomChange',function() {
+                bean.fire(self._canvas,'zoomChange',function() {
+                    bean.remove(self._canvas,'zoomChange',arguments.callee);
                     self.refresh();
                     if (typeof center_residue != 'undefined') {
                         var delta = ((start_zoom - zoom_level)/(25))*center_residue;
@@ -4829,10 +4830,10 @@ MASCP.CondensedSequenceRenderer.Zoom = function(renderer) {
                         evObj.initEvent('zoomChange',false,true);
                         self._canvas.dispatchEvent(evObj);
                     } else {
-                        jQuery(self._canvas).trigger('zoomChange');
+                        bean.fire(self._canvas,'zoomChange');
                     }
                 }
-                jQuery(self).trigger('zoomChange');
+                bean.fire(self,'zoomChange');
             };
         
             if (("ontouchend" in document) && self.zoomCenter && ! no_touch_center ) {
