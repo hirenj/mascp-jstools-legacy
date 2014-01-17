@@ -457,6 +457,7 @@ GOMap.Diagram.prototype.addEventListener = function(evt,func) {
 (function() {
 
 var zoomChange = function() {
+    console.log(this._events);
     if ( ! this._events || ! this._events.zoomChange ) {
         return;
     }
