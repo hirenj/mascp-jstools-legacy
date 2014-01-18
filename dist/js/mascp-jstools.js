@@ -9603,7 +9603,8 @@ MASCP.ClustalRunner.prototype.setupSequenceRenderer = function(renderer) {
             accs.push(seq.agi.toUpperCase());
         });
 
-        renderer.bind('orderChanged',function(e,order) {
+        renderer.bind('orderChanged',function(order) {
+            console.log(arguments);
             if (self.result) {
                 redraw_alignments(accs.indexOf(order[(order.indexOf(controller_name)+1)]));
             }
@@ -10276,7 +10277,7 @@ MASCP.SequenceRenderer = (function() {
                 if (this.refresh) {
                     this.refresh(true);
                 }
-                jQuery(renderer).trigger('orderChanged', [ track_order ] );
+                bean.fire(renderer,'orderChanged', [ track_order ] );
 
             }
         };

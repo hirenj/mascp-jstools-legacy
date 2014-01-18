@@ -7879,7 +7879,8 @@ MASCP.ClustalRunner.prototype.setupSequenceRenderer = function(renderer) {
             accs.push(seq.agi.toUpperCase());
         });
 
-        renderer.bind('orderChanged',function(e,order) {
+        renderer.bind('orderChanged',function(order) {
+            console.log(arguments);
             if (self.result) {
                 redraw_alignments(accs.indexOf(order[(order.indexOf(controller_name)+1)]));
             }
