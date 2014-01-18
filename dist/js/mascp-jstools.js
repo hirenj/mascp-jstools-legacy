@@ -11079,8 +11079,8 @@ MASCP.SequenceRenderer.addBoxOverlayToElement = function(layerName, width, fract
     }
     var event_names = ['mouseover','mousedown','mousemove','mouseout','click','dblclick','mouseup','mouseenter','mouseleave'];
     for (var i = 0 ; i < event_names.length; i++) {
-        jQuery(new_el).bind(event_names[i],function() { return function(e) {
-            jQuery(MASCP.getLayer(layerName)).trigger(e.type,[e,'SequenceRenderer']);
+        bean.add(new_el,event_names[i],function() { return function(e) {
+            bean.fire(MASCP.getLayer(layerName),e.type,[e,'SequenceRenderer']);
         };}(i));
     }    
     return this;
@@ -15031,7 +15031,8 @@ MASCP.CondensedSequenceRenderer.Navigation = (function() {
                     expanded_map[layer.name] = true;
                 }
             });
-            jQuery(layer).unbind('_expandevent').bind('_expandevent',function(ev) {
+            bean.remove(layer,'_expandevent')
+            bean.add(layer,'_expandevent',function(ev) {
                 expanded_map[layer.name] = ! expanded_map[layer.name];
                 self.withoutRefresh(function() {
                     self.setGroupVisibility(group,expanded_map[layer.name]);
@@ -15387,8 +15388,8 @@ MASCP.CondensedSequenceRenderer.Navigation = (function() {
         panel_back.push(MASCP.IE ? tracks_button : tracks_button.parentNode);
 
         tracks_button.addEventListener('click',function() {
-            jQuery(self).trigger('toggleEdit');
-            jQuery(self).trigger('click');
+            bean.fire(self,'toggleEdit');
+            bean.fire(self,'click');
         },false);
     
 
@@ -15562,7 +15563,7 @@ MASCP.CondensedSequenceRenderer.Navigation = (function() {
             }
         };
 
-        jQuery(self).bind('toggleEdit',function() {
+        bean.add(self,'toggleEdit',function() {
             edit_enabled = typeof edit_enabled == 'undefined' ? true : ! edit_enabled;
             draganddrop.disabled = ! edit_enabled;
             toggleMouseEvents.call(self,edit_enabled);
@@ -15756,7 +15757,7 @@ MASCP.CondensedSequenceRenderer.Navigation = (function() {
                 expander.style.cursor = 'pointer';
                 expander.addEventListener('click',function(e) {
                     e.stopPropagation();
-                    jQuery(track).trigger('_expandevent');
+                    bean.fire(track,'_expandevent');
                     if (self.isControllerExpanded(track)) {
                         expander.setAttribute('transform','translate(0,'+(y+0.5*height)+') scale('+text_scale+') rotate(90,'+(1.5*t_height)+','+t_metrics[3]+')');                
                     } else {
