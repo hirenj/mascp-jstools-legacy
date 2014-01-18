@@ -7866,7 +7866,7 @@ MASCP.ClustalRunner.prototype.setupSequenceRenderer = function(renderer) {
             }
         }
         renderer.zoom = 1;
-        jQuery(MASCP.getGroup(group_name)).trigger('visibilityChange',[renderer,true]);
+        bean.fire(MASCP.getGroup(group_name),'visibilityChange',[renderer,true]);
         renderer.refresh();
 
     };
@@ -7880,7 +7880,6 @@ MASCP.ClustalRunner.prototype.setupSequenceRenderer = function(renderer) {
         });
 
         renderer.bind('orderChanged',function(order) {
-            console.log(arguments);
             if (self.result) {
                 redraw_alignments(accs.indexOf(order[(order.indexOf(controller_name)+1)]));
             }
