@@ -277,8 +277,12 @@ MASCP.SequenceRenderer = (function() {
                     if (track_order.indexOf(renderer_track_order[i]) < 0) {
                         this.hideLayer(renderer_track_order[i]);
                         this.hideGroup(renderer_track_order[i]);
-                        jQuery(MASCP.getLayer(renderer_track_order[i])).trigger('removed',[renderer]);
-                        jQuery(MASCP.getGroup(renderer_track_order[i])).trigger('removed',[renderer]);
+                        if (MASCP.getLayer(renderer_track_order[i])) {
+                            bean.fire(MASCP.getLayer(renderer_track_order[i]),'removed',[renderer]);
+                        }
+                        if (MASCP.getGroup(renderer_track_order[i])) {
+                            bean.fire(MASCP.getGroup(renderer_track_order[i]),'removed',[renderer]);
+                        }
                     }
                 }
                 renderer_track_order = track_order;
@@ -4415,7 +4419,8 @@ clazz.prototype.addTrack = function(layer) {
         // for (var i = 0 ; i < event_names.length; i++) {
         //     bean.add(layer_containers[layer.name]._event_proxy,event_names[i],ev_function);
         // }
-        jQuery(layer).unbind('removed').bind('removed',function(e,rend) {
+        bean.remove(layer,'removed');
+        bean.add(layer,'removed',function(e,rend) {
             if (rend) {
                 rend.removeTrack(this);
             } else{
@@ -5023,7 +5028,7 @@ MASCP.CondensedSequenceRenderer.Navigation = (function() {
             
             var self = this;
 
-            jQuery(layer).bind('removed',function(ev,rend) {
+            bean.add(layer,'removed',function(ev,rend) {
                 self.setGroupVisibility(group);
             });
 
