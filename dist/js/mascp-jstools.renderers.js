@@ -2497,7 +2497,7 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
             renderer._object = this;
             renderer._canvas = canv;
             renderer._canvas._canvas_height = 0;
-            jQuery(renderer).trigger('svgready');
+            bean.fire(renderer,'svgready');
         },false);
     
         return canvas;
@@ -2845,7 +2845,8 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
 
         var RS = this._RS;
 
-        jQuery(this).unbind('svgready').bind('svgready',function(cnv) {
+        bean.remove(this,'svgready');
+        bean.add(this,'svgready',function(cnv) {
             var canv = renderer._canvas;
             canv.RS = RS;
             canv.setAttribute('background', '#000000');
