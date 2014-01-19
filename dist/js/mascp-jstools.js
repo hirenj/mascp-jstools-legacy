@@ -245,7 +245,7 @@
     result.preventDefault = fixEvent.preventDefault(e);
     result.stopPropagation = fixEvent.stopPropagation(e);
     result.target = target && target.nodeType == 3 ? target.parentNode : target;
-    if (~type.indexOf('key')) {
+    if (type && type.indexOf('key')) {
       result.keyCode = e.which || e.keyCode;
     } else if ((/click|mouse|menu/i).test(type)) {
       result.rightClick = e.which == 3 || e.button == 2;
@@ -8081,9 +8081,9 @@ MASCP.ClustalRunner.prototype.setupSequenceRenderer = function(renderer) {
             renderer.sequence = aligned[sequence_index];
             renderer.redrawAxis();
         }
-
         var alignments = result.getAlignment().split('');
         rendered_bits = rendered_bits.concat(renderer.renderTextTrack(controller_name,result.getAlignment().replace(/ /g,' ')));
+        rendered_bits.slice(-1)[0].setAttribute('data-spaces','true');
         rendered_bits.slice(-1)[0].layer = controller_name;
         var idxs = ["*",":","."," "].reverse();
         for (var i = 0 ; i < alignments.length; i++ ) {
@@ -14664,6 +14664,79 @@ clazz.prototype.refresh = function(animated) {
         this.navigation.refresh();
     }
 
+};
+
+
+/*
+
+Modified from:
+
+http://stackoverflow.com/questions/5433806/convert-embedded-svg-to-png-in-place
+
+None of the Safari browsers work with this, giving DOM Exception 18
+
+http://stackoverflow.com/questions/8158312/rasterizing-an-in-document-svg-to-canvas
+
+*/
+
+var svgDataURL = function(svg) {
+  svg.setAttribute('xmlns','http://www.w3.org/2000/svg');
+  svg.setAttribute('xmlns:xlink','http://www.w3.org/1999/xlink');
+
+  var svgAsXML = (new XMLSerializer).serializeToString(svg);
+  return "data:image/svg+xml," + encodeURIComponent(svgAsXML);
+};
+
+clazz.prototype.pngURL = function(pngReady,out_width) {
+    //var svg = document.getElementById('foobar');//this._canvas;
+    var svg_data = this._canvas.cloneNode(true);
+    var sequences = svg_data.querySelectorAll('text[data-spaces]');
+    for (var i = 0; i < sequences.length; i++) {
+        sequences[i].parentNode.removeChild(sequences[i]);
+    }
+
+    // Set up the aspect ratio of the output element
+    var svg = document.createElementNS(svgns,'svg');
+    svg.setAttribute('width',this._container_canvas.getBoundingClientRect().width);
+    svg.setAttribute('height',this._container_canvas.getBoundingClientRect().height);
+    svg.setAttribute('preserveAspectRatio','xMinYMin meet');
+
+    var transform_group = document.createElementNS(svgns,'g');
+    transform_group.setAttribute('transform',this._canvas.parentNode.getAttribute('transform'));
+    svg.appendChild(transform_group);
+    transform_group.appendChild(svg_data);
+
+    // We are missing the defs elements from the containing node
+
+    var all_defs = this._container_canvas.querySelectorAll('defs');
+    for (var i = 0; i < all_defs.length; i++) {
+        svg.appendChild(all_defs[i].cloneNode(true));
+    }
+    var can = document.createElement('canvas');
+    var total_width = 2*parseInt(svg.getAttribute('width'));
+    var total_height = 2*parseInt(svg.getAttribute('height'));
+    if (out_width) {
+        if (total_width > out_width) {
+            var ratio = total_width / out_width;
+            total_width = out_width;
+            total_height = parseInt(total_height / ratio);
+        }
+    }
+    can.width = total_width;
+    can.height = total_height;
+    var svgImg = new Image;
+    svgImg.width  = 1;
+    svgImg.height = 1;
+    var ctx = can.getContext('2d');
+    svgImg.onload = function(){
+      ctx.drawImage(svgImg,0,0,can.width,can.height);
+      pngReady(can.toDataURL());
+    };
+    svgImg.onerror = function() {
+      console.log("Got an error");
+    };
+    var dataurl = svgDataURL(svg);
+    svgImg.src = dataurl;
 };
 
 })(MASCP.CondensedSequenceRenderer);
