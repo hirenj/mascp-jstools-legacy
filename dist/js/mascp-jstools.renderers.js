@@ -1824,12 +1824,7 @@ MASCP.registerLayer = function(layerName, options, renderers)
     this.layers[layerName] = layer;
     
     if (options.css) {
-        layerCss = options.css;
-        layerCss = layerCss.replace(/\.inactive/g, '.'+layerName+'_inactive .'+layerName);
-        layerCss = layerCss.replace(/\.tracks\s+\.active/g, '.'+layerName+'_active .track .'+layerName);
-        layerCss = layerCss.replace(/\.active/g, '.'+layerName+'_active .'+layerName);
-        layerCss = layerCss.replace(/\.overlay/g, '.'+layerName+'_overlay');
-        jQuery('<style type="text/css">'+layerCss+'</style>').appendTo('head');
+        console.log("options.css is deprecated");
     }
     layer.layer_id = new Date().getMilliseconds();
     bean.fire(MASCP,'layerRegistered',[layer].concat(renderers));
@@ -1885,7 +1880,6 @@ MASCP.Layer = function() {
  * @author  hjjoshi
  * @param   {Element} sequenceContainer Container element that the sequence currently is found in, and also 
  *                                      the container that data will be re-inserted into.
- * @requires jQuery
  */
 MASCP.SequenceRenderer = (function() {
 
@@ -1923,8 +1917,12 @@ MASCP.SequenceRenderer = (function() {
                     if (track_order.indexOf(renderer_track_order[i]) < 0) {
                         this.hideLayer(renderer_track_order[i]);
                         this.hideGroup(renderer_track_order[i]);
-                        jQuery(MASCP.getLayer(renderer_track_order[i])).trigger('removed',[renderer]);
-                        jQuery(MASCP.getGroup(renderer_track_order[i])).trigger('removed',[renderer]);
+                        if (MASCP.getLayer(renderer_track_order[i])) {
+                            bean.fire(MASCP.getLayer(renderer_track_order[i]),'removed',[renderer]);
+                        }
+                        if (MASCP.getGroup(renderer_track_order[i])) {
+                            bean.fire(MASCP.getGroup(renderer_track_order[i]),'removed',[renderer]);
+                        }
                     }
                 }
                 renderer_track_order = track_order;
@@ -1932,7 +1930,7 @@ MASCP.SequenceRenderer = (function() {
                 if (this.refresh) {
                     this.refresh(true);
                 }
-                jQuery(renderer).trigger('orderChanged', [ track_order ] );
+                bean.fire(renderer,'orderChanged', [ track_order ] );
 
             }
         };
@@ -1957,15 +1955,21 @@ MASCP.SequenceRenderer = (function() {
             }
     //        this._container.style.width = '100%';
 
-            jQuery(this).bind('sequenceChange', function(e){
-                jQuery(sequenceContainer).text("");
-                jQuery(sequenceContainer).append(this._sequence_els);
-                jQuery(sequenceContainer).append(jQuery('<div style="clear: both; float: none; height: 0px; width: 100%;"></div>'));
+            bean.add(this,'sequenceChange', function(e){
+                while (sequenceContainer.firstChild) {
+                    sequenceContainer.removeChild(sequenceContainer.firstChild);
+                }
+                this._sequence_els.forEach(function(el) {
+                    sequenceContainer.appendChild(el);
+                });
+                var float_clear = document.createElement('div');
+                float_clear.setAttribute('style','clear: both; float: none; height: 0px; width: 100%;');
+                sequenceContainer.appendChild(float_clear);
                 sequenceContainer.style.width = (this._sequence_els.length)+'em';
     //            this.showRowNumbers();            
             });
 
-            this.setSequence(jQuery(sequenceContainer).text());
+            this.setSequence(sequenceContainer.textContent);
         }
         
         setupTrackOrder(this);
@@ -2053,11 +2057,13 @@ MASCP.SequenceRenderer.prototype.setSequence = function(sequence)
     for (var i =0; i < seq_chars.length; i++) {
         var aa = seq_chars[i];
         if (aa.match(/[A-Za-z]/)) {
-            sequence_els.push(jQuery('<span>'+aa+'</span>')[0]);
+            var span_el = document.createElement('span');
+            span_el.textContent = aa;
+            sequence_els.push(span_el);
         }
     }
 
-    jQuery(sequence_els).each( function(i) {
+    sequence_els.forEach( function(el,i) {
         // if ( (i % 10) == 0 && i > 0 && ((i % 50) != 0)) {
         //     this.style.margin = '0px 0px 0px 1em';
         // }
@@ -2069,21 +2075,21 @@ MASCP.SequenceRenderer.prototype.setSequence = function(sequence)
         //     this.style.clear = 'both';
         // }
         
-        this._index = i;
+        el._index = i;
         
-        this.style.display = 'block';
-        this.style.cssFloat = 'left';
-        this.style.styleFloat = 'left';
-        this.style.height = '1.1em';
-        this.style.position = 'relative';
+        el.style.display = 'block';
+        el.style.cssFloat = 'left';
+        el.style.styleFloat = 'left';
+        el.style.height = '1.1em';
+        el.style.position = 'relative';
 
-        this.addToLayer = MASCP.SequenceRenderer.addElementToLayer;
-        this.addBoxOverlay = MASCP.SequenceRenderer.addBoxOverlayToElement;
-        this.addToLayerWithLink = MASCP.SequenceRenderer.addElementToLayerWithLink;
-        this._renderer = renderer;
+        el.addToLayer = MASCP.SequenceRenderer.addElementToLayer;
+        el.addBoxOverlay = MASCP.SequenceRenderer.addBoxOverlayToElement;
+        el.addToLayerWithLink = MASCP.SequenceRenderer.addElementToLayerWithLink;
+        el._renderer = renderer;
     });
     this._sequence_els = sequence_els;   
-    jQuery(this).trigger('sequenceChange');
+    bean.fire(this,'sequenceChange');
 };
 
 /**
@@ -2162,21 +2168,6 @@ MASCP.SequenceRenderer.prototype.getAminoAcidsByPeptide = function(peptideSequen
     return results;
 };
 
-/*
- * Show the row numbers on the display of the sequence.
- */
-MASCP.SequenceRenderer.prototype.showRowNumbers = function() {
-    var numbers = jQuery('<div style="position: absolute; top: 0px; left: 0px; width: 2em;"></div>');
-    jQuery(this._sequence_els).each( function(i) {
-        if ( (i % 50) === 0) {
-            this.style.marginLeft = '3em';
-            numbers.append(jQuery('<div style="text-align: right; height: 1.1em;">'+(i+1)+'</div>')[0]);
-        }
-    });
-    jQuery(this._container).append(numbers);
-    return this;
-};
-
 /**
  * Toggle the display of the given layer
  * @param {String|Object} layer Layer name, or layer object
@@ -2189,10 +2180,10 @@ MASCP.SequenceRenderer.prototype.toggleLayer = function(layer,consumeChange) {
     } else {
         layer = MASCP.layers[layer];
     }
-    jQuery(this._container).toggleClass(layerName+'_active');
-    jQuery(this._container).toggleClass(layerName+'_inactive');
+    this._container.classList.toggle(layerName+'_active');
+    this._container.classList.toggle(layerName+'_inactive');
     if ( ! consumeChange ) {
-        jQuery(layer).trigger('visibilityChange',[this,this.isLayerActive(layer)]);
+        bean.fire(layer,'visibilityChange',[this,this.isLayerActive(layer)]);
     }
     return this;
 };
@@ -2208,11 +2199,11 @@ MASCP.SequenceRenderer.prototype.showLayer = function(lay,consumeChange) {
     if (! layer || layer.disabled) {
         return;
     }
-    jQuery(this._container).addClass(layer.name+'_active');
-    jQuery(this._container).addClass('active_layer');    
-    jQuery(this._container).removeClass(layer.name+'_inactive');
+    this._container.classList.add(layer.name+'_active');
+    this._container.classList.add('active_layer');    
+    this._container.classList.remove(layer.name+'_inactive');
     if ( ! consumeChange ) {
-        jQuery(layer).trigger('visibilityChange',[this,true]);
+        bean.fire(layer,'visibilityChange',[this,true]);
     }
     return this;
 };
@@ -2229,11 +2220,11 @@ MASCP.SequenceRenderer.prototype.hideLayer = function(lay,consumeChange) {
         return;
     }
         
-    jQuery(this._container).removeClass(layer.name+'_active');
-    jQuery(this._container).removeClass('active_layer');
-    jQuery(this._container).addClass(layer.name+'_inactive');
+    this._container.classList.remove(layer.name+'_active');
+    this._container.classList.remove('active_layer');
+    this._container.classList.add(layer.name+'_inactive');
     if (! consumeChange ) {
-        jQuery(layer).trigger('visibilityChange',[this,false]);
+        bean.fire(layer,'visibilityChange',[this,false]);
     }
     return this;
 };
@@ -2280,7 +2271,7 @@ MASCP.SequenceRenderer.prototype.setGroupVisibility = function(grp,visibility,co
         }
     });
     if (visibility !== null && ! consumeChange) {
-        jQuery(group).trigger('visibilityChange',[renderer,visibility]);
+        bean.fire(group,'visibilityChange',[renderer,visibility]);
     }
 };
 
@@ -2322,7 +2313,7 @@ MASCP.SequenceRenderer.prototype.isLayerActive = function(layer) {
     if (typeof layer != 'string') {
         layerName = layer.name;
     }
-    return (! layer.disabled) && jQuery(this._container).hasClass(layerName+'_active');
+    return (! layer.disabled) && this._container.classList.contains(layerName+'_active');
 };
 
 /**
@@ -2338,106 +2329,9 @@ MASCP.SequenceRenderer.prototype._setHighlight = function(layer,isHighlighted) {
  * Create a layer controller for this sequence renderer. Attach the controller to the containing box, and shift the box across 20px.
  */
 MASCP.SequenceRenderer.prototype.createLayerController = function() {
-    var controller_box = jQuery('<div style="position: absolute; top: 0px; font-family: Helvetica, Arial, Sans-serif; margin-left: 20px; left: 100%; width: 250px;"></div>');
-    var container = jQuery(this._container);
-    container.append(controller_box);
-
-    if ( ! this._controllers ) {
-        this._controllers = [];
-    }
-    this._controllers.push(controller_box);
-
-    var renderer = this;
-    
-    jQuery(MASCP).bind('layerRegistered', function(e) {
-		jQuery(controller_box).accordion('destroy');
-		jQuery(controller_box).accordion({header : 'h3', collapsible : true, autoHeight: true, active: false });
-	});
-    
-    
-    controller_box.add_layer = function(layer) {
-        var layer_controller = jQuery('<div><input type="checkbox"/>'+layer.fullname+'</div>');
-        if (layer.group) {
-            jQuery(layer.group._layer_container).append(layer_controller);
-        } else {
-            jQuery(this).append(layer_controller);
-        }
-        
-        renderer.createLayerCheckbox(layer,jQuery('input',layer_controller)[0]);
-    };
-
-    controller_box.add_group = function(group) {
-        var layer_controller = jQuery('<h3><input style="margin-left: 25px;" type="checkbox"/>'+group.fullname+'</h3>');
-        jQuery(this).append(layer_controller);
-        var children_container = jQuery('<div style="max-height: 200px; overflow: auto;"></div>');
-        jQuery(this).append(children_container);
-        
-        group._layer_container = children_container[0];
-        group._controller = layer_controller;
-        
-        group._check_intermediate = function() {
-            var checked = 0;
-            jQuery(group._layers).each(function(i) {
-                if (renderer.isLayerActive(this.name)) {
-                    checked++;
-                }
-            });
-            var input_el = jQuery('input',layer_controller)[0];
-            input_el.indeterminate = (checked !== 0 && checked != group._layers.length);
-            if (! input_el.indeterminate ) {
-                input_el.checked = (checked !== 0);
-            }
-        };
-        
-        jQuery(jQuery('input',layer_controller)[0]).bind('mouseup',function(e) {
-            if (this.indeterminate) {
-                jQuery(this).trigger('change');
-            }
-        });
-
-        renderer.createGroupCheckbox(group,jQuery('input',layer_controller)[0]);
-        
-    };
-
-    
-    bean.add(MASCP,"layerRegistered",function(e,layer) {
-        if (layer.group && layer.group.hide_member_controllers) {
-            return;
-        }
-        controller_box.add_layer(layer);
-    });
-
-    bean.add(MASCP,"groupRegistered",function(e,group) {
-        if (group.hide_group_controller) {
-            return;
-        }
-        controller_box.add_group(group);
-    });
-
-    
-    if (MASCP.layers) {
-        for (var layerName in MASCP.layers) {
-            if (MASCP.layers.hasOwnProperty(layerName)) {
-                var layer = MASCP.layers[layerName];
-                if (layer.group && layer.group.hide_member_controllers) {
-                    continue;
-                }
-                controller_box.add_layer(layer);
-            }
-        }
-    }
-    return this;
+    console.log("createLayerController is deprected");
+    return;
 };
-
-/*
- * Create a hydropathy plot for this renderer
- * @returns Element with the hydropathy plot
- * @type Element
-MASCP.SequenceRenderer.prototype.getHydropathyPlot = function() {
-    var base_url = 'http://www.plantenergy.uwa.edu.au/applications/hydropathy/hydropathy.php?title=Hydropathy&amp;sequence=';
-    return jQuery('<img style="width: '+(this.sequence.length * 2)+'px;" src="'+base_url+this.sequence+'"/>')[0];
-};
-*/
 
 /**
  * Create a checkbox that is used to control the given layer
@@ -2447,82 +2341,8 @@ MASCP.SequenceRenderer.prototype.getHydropathyPlot = function() {
  * @type Object
  */
 MASCP.SequenceRenderer.prototype.createLayerCheckbox = function(layer,inputElement,exclusive) {
-    var renderer = this;
-
-    if (! MASCP.layers[layer]) {
-        return;
-    }
-
-
-    var layerObj = null;
-    
-    if (typeof layer == 'string' && MASCP.layers ) {
-        layerObj = MASCP.layers[layer];
-    } else if (typeof layer == 'object') {
-        layerObj = layer;
-    }
-
-    if ( ! layerObj ) {
-        return;
-    }
-    
-    
-    
-    var the_input = inputElement || jQuery('<input type="checkbox" value="true"/>')[0];
-    
-    the_input._current_bindings = the_input._current_bindings || [];
-    
-    if (exclusive) {
-        this._removeOtherBindings(layerObj,the_input);
-    }
-    
-    for (var i = 0; i < the_input._current_bindings.length; i++) {
-        if (    the_input._current_bindings[i].layer == layer && 
-                the_input._current_bindings[i].renderer == renderer ) {
-            return;
-        }
-    }
-    
-    the_input.removeAttribute('checked');
-    the_input.checked = this.isLayerActive(layer);
-
-    var layer_func = null;
-
-    if (layerObj && the_input._current_bindings.length === 0) {
-        layer_func = function(e,rend,visibility) {
-            if (rend != renderer) {
-                return;
-            }
-            if (visibility) {
-                the_input.checked = visibility;
-            } else {
-                the_input.checked = false;
-                the_input.removeAttribute('checked');
-            }
-        };
-        jQuery(layerObj).bind("visibilityChange",layer_func);
-        if (the_input.parentNode) {
-            the_input.parentNode.insertBefore(jQuery('<div style="position: relative; left: 0px; top: 0px; float: left; background-color: '+layerObj.color+'; width: 1em; height: 1em;"></div>')[0],the_input);
-        }
-    }
-
-
-    var input_func = function(e) {
-        if (this.checked) {
-            renderer.showLayer(layer,false);
-        } else {
-//            renderer.hideLayer(layer,false);
-        }
-        if (MASCP.getLayer(layer).group && MASCP.getLayer(layer).group._check_intermediate) {
-            MASCP.getLayer(layer).group._check_intermediate();
-        }
-    };
-
-    jQuery(the_input).bind( (MASCP.IE ? 'click' : 'change'),input_func);
-    
-    the_input._current_bindings.push({ 'layer' : layer , 'renderer' : renderer, 'input_function' : input_func, 'object_function' : layer_func });    
-    
-    return the_input;    
+    console.log("createLayerCheckbox is deprecated");
+    return;
 };
 
 /**
@@ -2569,13 +2389,13 @@ MASCP.SequenceRenderer.prototype._removeOtherBindings = function(object,inputEle
         var cb = inputElement._current_bindings[i];
         
         if ( cb.layer && cb.layer != object.name ) {
-            jQuery(MASCP.getLayer(cb.layer)).unbind('visibilityChange',cb.object_function);
-            jQuery(inputElement).unbind('change',cb.input_function);
+            bean.remove(MASCP.getLayer(cb.layer),'visibilityChange',cb.object_function);
+            bean.remove(inputElement,'change',cb.input_function);
         }
         
         if ( cb.group && cb.group != object.name ) {
-            jQuery(MASCP.getGroup(cb.group)).unbind('visibilityChange',cb.object_function);
-            jQuery(inputElement).unbind('change',cb.input_function);
+            bean.remove(MASCP.getGroup(cb.group),'visibilityChange',cb.object_function);
+            bean.remove(inputElement,'change',cb.input_function);
         }
         cb.group = null;
         cb.layer = null;
@@ -2590,72 +2410,8 @@ MASCP.SequenceRenderer.prototype._removeOtherBindings = function(object,inputEle
  * @type Object
  */
 MASCP.SequenceRenderer.prototype.createGroupCheckbox = function(group,inputElement,exclusive) {
-    var renderer = this;
-    var the_input = inputElement ? jQuery(inputElement) : jQuery('<input type="checkbox" value="true"/>');
-    var groupObject = MASCP.getGroup(group);
-    
-    if (! groupObject ) {
-        return;
-    }
-
-    the_input[0]._current_bindings = the_input[0]._current_bindings || [];
-
-    if (exclusive) {
-        this._removeOtherBindings(groupObject,the_input[0]);
-    }
-    
-    for (var i = 0; i < the_input[0]._current_bindings.length; i++) {
-        if (    the_input[0]._current_bindings[i].group == group && 
-                the_input[0]._current_bindings[i].renderer == renderer ) {
-            return;
-        }
-    }
-    
-    the_input[0].removeAttribute('checked');
-    var input_func = function(e) {        
-        group_obj = MASCP.getGroup(group);
-        if (! group_obj ) {
-            return;
-        }
-        if (this.checked) {
-            jQuery(group_obj._layers).each(function(i) {
-                renderer.showLayer(this.name,false);
-            });
-        } else {
-            jQuery(group_obj._layers).each(function(i) {
-//                renderer.hideLayer(this.name,false);
-            });                
-        }
-    };
-    
-    the_input.bind((MASCP.IE ? 'click' : 'change'),input_func);
-
-    var group_func = null;
-
-    if (groupObject && the_input[0]._current_bindings.length === 0) {
-        group_func = function(e,rend,visibility) {
-            if (rend != renderer) {
-                return;
-            }
-            the_input[0].checked = visibility;
-            if ( ! visibility ) {
-                the_input[0].removeAttribute('checked');
-            }
-        };
-        jQuery(MASCP.getGroup(group)).bind('visibilityChange', group_func);
-        
-        if (the_input[0].parentNode) {
-            the_input[0].parentNode.insertBefore(jQuery('<div style="position: relative; left: 0px; top: 0px; float: left; background-color: '+groupObject.color+'; width: 1em; height: 1em;"></div>')[0],the_input[0]);
-        }
-    }
-
-    the_input[0]._current_bindings.push({ 'group' : group , 'renderer' : renderer, 'input_function' : input_func, 'object_function' : group_func });
-
-    the_input.bind('click',function(e) {
-        e.stopPropagation();
-    });
-    
-    return the_input;
+    console.log("createGroupCheckbox is deprecated");
+    return;
 };
 
 /**
@@ -2669,7 +2425,7 @@ MASCP.SequenceRenderer.prototype.createGroupController = function(lay,grp) {
     var group = MASCP.getGroup(grp);
 
     var self = this;
-    jQuery(layer).bind('visibilityChange',function(ev,rend,visible) {
+    bean.add(layer,'visibilityChange',function(rend,visible) {
         if (rend == self) {
             self.setGroupVisibility(group, visible);
             self.refresh();
@@ -2700,14 +2456,19 @@ MASCP.SequenceRenderer.addElementToLayer = function(layerName)
  */
 MASCP.SequenceRenderer.addElementToLayerWithLink = function(layerName, url, width)
 {
-    jQuery(this).addClass(layerName);
-    var new_el = jQuery(this).append(jQuery('<a href="'+url+'" class="'+layerName+'_overlay" style="display: box; left: 0px; top: 0px; width: 100%; position: absolute; height: 100%;">&nbsp;</a>'))[0];
+    this.classList.add(layerName);
+    var anchor = document.createElement('a');
+    anchor.setAttribute('href',url);
+    anchor.classList.add(layerName+'_overlay');
+    anchor.setAttribute('style','display: box; left: 0px; top: 0px; width: 100%; position: absolute; height: 100%;');
+    anchor.textContent = '&nbsp;';
+    this.appendChild(anchor);
     while (width && width > 0) {
         this._renderer._sequence_els[this._index + width].addToLayerWithLink(layerName,url);
         width -= 1;
     }
     if (this._z_indexes && this._z_indexes[layerName]) {
-        new_el.style.zIndex = this._z_indexes[layerName];
+        anchor.style.zIndex = this._z_indexes[layerName];
     }
     return this;    
 };
@@ -2724,8 +2485,12 @@ MASCP.SequenceRenderer.addBoxOverlayToElement = function(layerName, width, fract
     if (typeof fraction == 'undefined') {
         fraction = 1;
     }
-    jQuery(this).addClass(layerName);
-    var new_el = jQuery(this).append(jQuery('<div class="'+layerName+'_overlay" style="top: 0px; width: 100%; position: absolute; height: 100%; opacity:'+fraction+';"></div>'))[0];
+
+    this.classList.add(layerName);
+    var new_el = document.createElement('div');
+    new_el.classList.add(layerName+'_overlay');
+    new_el.setAttribute('style','top: 0px; width: 100%; position: absolute; height: 100%; opacity:'+fraction+';');
+    this.appendChild(new_el);
     while (width && width > 1) {
         this._renderer._sequence_els[this._index + width - 1].addBoxOverlay(layerName,0,fraction);
         width -= 1;
@@ -2735,8 +2500,8 @@ MASCP.SequenceRenderer.addBoxOverlayToElement = function(layerName, width, fract
     }
     var event_names = ['mouseover','mousedown','mousemove','mouseout','click','dblclick','mouseup','mouseenter','mouseleave'];
     for (var i = 0 ; i < event_names.length; i++) {
-        jQuery(new_el).bind(event_names[i],function() { return function(e) {
-            jQuery(MASCP.getLayer(layerName)).trigger(e.type,[e,'SequenceRenderer']);
+        bean.add(new_el,event_names[i],function() { return function(e) {
+            bean.fire(MASCP.getLayer(layerName),e.type,[e,'SequenceRenderer']);
         };}(i));
     }    
     return this;
@@ -2748,7 +2513,9 @@ MASCP.SequenceRenderer.addBoxOverlayToElement = function(layerName, width, fract
  */
 MASCP.SequenceRenderer.prototype.reset = function()
 {
-    jQuery(this._container).attr('class',null);
+    while(this._container.classList.length > 0) {
+        this._container.classList.remove(this._container.classList.item(0));
+    }
     for ( var group in MASCP.groups) {
         if (MASCP.groups.hasOwnProperty(group)) {
             this.hideGroup(group);
@@ -2793,7 +2560,9 @@ MASCP.SequenceRenderer.prototype.refresh = function()
         if (! this.isLayerActive(this.trackOrder[i])) {
             continue;
         }
-        jQuery('.'+this.trackOrder[i]+'_overlay').css('z-index',z_index);
+        Array.prototype.slice.call(document.querySelectorAll('.'+this.trackOrder[i]+'_overlay')).forEach(function(el) {
+            el.style.zIndex = z_index;
+        });
         this._z_indexes[this.trackOrder[i]] = z_index;
         z_index -= 1;
     }
@@ -2807,18 +2576,18 @@ MASCP.SequenceRenderer.prototype.refresh = function()
 
 MASCP.SequenceRenderer.prototype.bind = function(ev,func)
 {
-    jQuery(this).bind(ev,func);
+    bean.add(this,ev,func);
 };
 
 MASCP.SequenceRenderer.prototype.unbind = function(ev,func)
 {
-    jQuery(this).unbind(ev,func);
+    bean.remove(this,ev,func);
 };
 
 
 MASCP.SequenceRenderer.prototype.trigger = function(ev,args)
 {
-    jQuery(this).trigger(ev,args);
+    bean.fire(this,ev,args);
 };
 
 var SVGCanvas = SVGCanvas || (function() {
@@ -3087,7 +2856,7 @@ var SVGCanvas = SVGCanvas || (function() {
         }
         if ( ! in_anim ) {
             extended_elements.forEach(function(canv) {
-                jQuery(canv).trigger('_anim_begin');
+                bean.fire(canv,'_anim_begin');
             });
             in_anim = true;
         }
@@ -3099,7 +2868,7 @@ var SVGCanvas = SVGCanvas || (function() {
                 anim_clock_funcs = null;
                 in_anim = false;
                 extended_elements.forEach(function(canv) {
-                    jQuery(canv).trigger('_anim_end');
+                    bean.fire(canv,'_anim_end');
                 });
                 return;
             }
@@ -3938,9 +3707,9 @@ MASCP.CondensedSequenceRenderer = function(sequenceContainer) {
 
     // We want to unbind the default handler for sequence change that we get from
     // inheriting from CondensedSequenceRenderer
-    jQuery(this).unbind('sequenceChange');
+    bean.remove(this,'sequenceChange');
 
-    jQuery(this).bind('sequenceChange',function() {
+    bean.add(this,'sequenceChange',function() {
         for (var layername in MASCP.layers) {
             if (MASCP.layers.hasOwnProperty(layername)) {
                 MASCP.layers[layername].disabled = true;
@@ -4039,15 +3808,15 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
                     return oldAddEventListener.apply(canv,[ev,func,bubbling]);
                 };
 
-                jQuery(canv).bind('_anim_begin',function() {
+                bean.add(canv,'_anim_begin',function() {
                     for (var i = 0; i < mouse_moves.length; i++ ) {
                         canv.removeEventListener('mousemove', mouse_moves[i], false );
                     }
-                    jQuery(canv).bind('_anim_end',function() {
+                    bean.add(canv,'_anim_end',function() {
                         for (var j = 0; j < mouse_moves.length; j++ ) {
                             oldAddEventListener.apply(canv,['mousemove', mouse_moves[j], false] );
                         }                        
-                        jQuery(canv).unbind('_anim_end',arguments.callee);
+                        bean.remove(canv,'_anim_end',arguments.callee);
                     });
                 });
             }
@@ -4075,7 +3844,7 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
                                                                 'style':'fill: url(#right_fade);'});
 
 
-            jQuery(canv).bind('pan',function() {
+            bean.add(canv,'pan',function() {
                 if (canv.currentTranslate.x >= 0) {
                     left_fade.setAttribute('visibility','hidden');
                 } else {
@@ -4083,12 +3852,12 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
                 }
             });
         
-            jQuery(canv).bind('_anim_begin',function() {
+            bean.add(canv,'_anim_begin',function() {
                 left_fade.setAttribute('visibility','hidden');
             });
         
-            jQuery(canv).bind('_anim_end',function() {
-                jQuery(canv).trigger('pan');
+            bean.add(canv,'_anim_end',function() {
+                bean.fire(canv,'pan');
             });
 
             if (canv.currentTranslate.x >= 0) {
@@ -4143,7 +3912,7 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
             renderer._object = this;
             renderer._canvas = canv;
             renderer._canvas._canvas_height = 0;
-            jQuery(renderer).trigger('svgready');
+            bean.fire(renderer,'svgready');
         },false);
     
         return canvas;
@@ -4168,10 +3937,10 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
         };
 
         if ( ! MASCP.IE ) {
-        jQuery(this._canvas).bind('panstart',hide_chrome);
+        bean.add(this._canvas,'panstart',hide_chrome);
         bean.add(this._canvas,'panend',show_chrome);
-        jQuery(this._canvas).bind('_anim_begin',hide_chrome);
-        jQuery(this._canvas).bind('_anim_end',show_chrome);
+        bean.add(this._canvas,'_anim_begin',hide_chrome);
+        bean.add(this._canvas,'_anim_end',show_chrome);
         nav_canvas.addEventListener('DOMMouseScroll',wheel_fn,false);
         nav_canvas.addEventListener('wheel',wheel_fn,false);
         nav_canvas.onmousewheel = wheel_fn;
@@ -4192,9 +3961,9 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
             aas.attr({'y' : 0.5*renderer._axis_height*renderer._RS});
         };
         var canvas = renderer._canvas;
-        canvas.addEventListener('zoomChange', zoomchange, false);
+        bean.add(canvas,'zoomChange', zoomchange);
         bean.add(aas,'removed',function() {
-            canvas.removeEventListener('zoomChange',zoomchange);
+            bean.remove(canvas,'zoomChange',zoomchange);
         });
         return aas;
     };
@@ -4356,9 +4125,9 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
                    }
                }
         };
-        canvas.addEventListener('zoomChange', zoomchange, false);
+        bean.add(canvas,'zoomChange', zoomchange);
         bean.add(axis,'removed',function() {
-            canvas.removeEventListener('zoomChange',zoomchange);
+            bean.remove(canvas,'zoomChange',zoomchange);
             var remover = function(el) {
                 if (el.parentNode) {
                     el.parentNode.removeChild(el);
@@ -4402,8 +4171,8 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
         var renderer = this;
         var curr = renderer.zoom;
         var delta = (zoom - curr)/50;
-        jQuery(renderer).bind('zoomChange',function() {
-            jQuery(renderer).unbind('zoomChange',arguments.callee);
+        bean.add(renderer,'zoomChange',function() {
+            bean.remove(renderer,'zoomChange',arguments.callee);
             delete renderer.zoomCenter;
             if (callback) {
                 callback.call(null);
@@ -4454,7 +4223,7 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
     clazz.prototype.setSequence = function(sequence) {
         var new_sequence = this._cleanSequence(sequence);
         if (new_sequence == this.sequence && new_sequence !== null) {
-            jQuery(this).trigger('sequenceChange');
+            bean.fire(this,'sequenceChange');
             return;
         }
     
@@ -4476,12 +4245,12 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
 
         var build_sequence_els = function() {
             var seq_els = [];
-            jQuery(renderer.sequence.split('')).each( function(i) {
+            renderer.sequence.split('').forEach( function(aa,i) {
                 var el = {};
                 el._index = i;
                 el._renderer = renderer;
                 renderer._extendElement(el);
-                el.amino_acid = this;
+                el.amino_acid = aa;
                 seq_els.push(el);
             });
             renderer._sequence_els = seq_els;
@@ -4491,7 +4260,8 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
 
         var RS = this._RS;
 
-        jQuery(this).unbind('svgready').bind('svgready',function(cnv) {
+        bean.remove(this,'svgready');
+        bean.add(this,'svgready',function(cnv) {
             var canv = renderer._canvas;
             canv.RS = RS;
             canv.setAttribute('background', '#000000');
@@ -4623,7 +4393,7 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
                 }
             });
 
-            jQuery(renderer).trigger('sequenceChange');
+            bean.fire(renderer,'sequenceChange');
         });
         var canvas = createCanvasObject.call(this);
         if (! this._canvas) {
@@ -4639,8 +4409,8 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
     
         var seq_change_func = function(other_func) {
             if ( ! rend._canvas ) {
-                rend.bind('sequenceChange',function() {
-                    jQuery(rend).unbind('sequenceChange',arguments.callee);
+                bean.add(rend,'sequenceChange',function() {
+                    bean.remove(rend,'sequenceChange',arguments.callee);
                     other_func.apply();
                 });
             } else {
@@ -4751,8 +4521,8 @@ MASCP.CondensedSequenceRenderer.prototype.addValuesToLayer = function(layerName,
     if ( ! canvas ) {        
         var orig_func = arguments.callee;
         var self = this;
-        this._renderer.bind('sequencechange',function() {
-            this._renderer.unbind('sequencechange',arguments.callee);
+        bean.add(this._renderer,'sequencechange',function() {
+            bean.remove(this._renderer,'sequencechange',arguments.callee);
             orig_func.call(self,layerName,values);
         });
         log("Delaying rendering, waiting for sequence change");
@@ -4844,8 +4614,8 @@ var addElementToLayer = function(layerName,opts) {
     if ( ! canvas ) {        
         var orig_func = arguments.callee;
         var self = this;
-        this._renderer.bind('sequencechange',function() {
-            this._renderer.unbind('sequencechange',arguments.callee);            
+        bean.add(this._renderer,'sequencechange',function() {
+            bean.remove(this._renderer,'sequencechange',arguments.callee);            
             orig_func.call(self,layerName);
         });
         log("Delaying rendering, waiting for sequence change");
@@ -4956,8 +4726,8 @@ var addBoxOverlayToElement = function(layerName,width,fraction,opts) {
     if ( ! canvas ) {
         var orig_func = arguments.callee;
         var self = this;
-        this._renderer.bind('sequencechange',function() {
-            this._renderer.unbind('sequencechange',arguments.callee);            
+        bean.add(this._renderer,'sequencechange',function() {
+            bean.remove(this._renderer,'sequencechange',arguments.callee);            
             orig_func.call(self,layerName,width,opts);
         });
         log("Delaying rendering, waiting for sequence change");
@@ -5012,8 +4782,8 @@ var addTextToElement = function(layerName,width,opts) {
     if ( ! canvas ) {
         var orig_func = arguments.callee;
         var self = this;
-        this._renderer.bind('sequencechange',function() {
-            this._renderer.unbind('sequencechange',arguments.callee);
+        bean.add(this._renderer,'sequencechange',function() {
+            bean.remove(this._renderer,'sequencechange',arguments.callee);
             orig_func.call(self,layerName,width,opts);
         });
         log("Delaying rendering, waiting for sequence change");
@@ -5059,8 +4829,8 @@ var addShapeToElement = function(layerName,width,opts) {
     if ( ! canvas ) {
         var orig_func = arguments.callee;
         var self = this;
-        this._renderer.bind('sequencechange',function() {
-            this._renderer.unbind('sequencechange',arguments.callee);
+        bean.add(this._renderer,'sequencechange',function() {
+            bean.remove(this._renderer,'sequencechange',arguments.callee);
             orig_func.call(self,layerName,width,opts);
         });
         log("Delaying rendering, waiting for sequence change");
@@ -5134,8 +4904,8 @@ var addElementToLayerWithLink = function(layerName,url,width) {
     if ( ! canvas ) {
         var orig_func = arguments.callee;
         var self = this;
-        this._renderer.bind('sequencechange',function() {
-            this._renderer.unbind('sequencechange',arguments.callee);            
+        bean.add(this._renderer,'sequencechange',function() {
+            bean.remove(this._renderer,'sequencechange',arguments.callee);            
             orig_func.call(self,layerName,url,width);
         });
         log("Delaying rendering, waiting for sequence change");
@@ -5168,8 +4938,8 @@ var addCalloutToLayer = function(layerName,element,opts) {
     if ( ! canvas ) {
         var orig_func = arguments.callee;
         var self = this;
-        this._renderer.bind('sequencechange',function() {
-            this._renderer.unbind('sequencechange',arguments.callee);            
+        bean.add(this._renderer,'sequencechange',function() {
+            bean.remove(this._renderer,'sequencechange',arguments.callee);            
             orig_func.call(self,layerName,width,opts);
         });
         log("Delaying rendering, waiting for sequence change");
@@ -5200,8 +4970,8 @@ var addAnnotationToLayer = function(layerName,width,opts) {
     if ( ! canvas ) {
         var orig_func = arguments.callee;
         var self = this;
-        this._renderer.bind('sequencechange',function() {
-            this._renderer.unbind('sequencechange',arguments.callee);            
+        bean.add(this._renderer,'sequencechange',function() {
+            bean.remove(this._renderer,'sequencechange',arguments.callee);            
             orig_func.call(self,layerName,width,opts);
         });
         log("Delaying rendering, waiting for sequence change");
@@ -5358,7 +5128,7 @@ var zoomFunctions = [];
 
 MASCP.CondensedSequenceRenderer.prototype.addUnderlayRenderer = function(underlayFunc) {
     if (zoomFunctions.length == 0) {
-        this.bind('zoomChange',function() {
+        bean.add(this,'zoomChange',function() {
             for (var i = zoomFunctions.length - 1; i >=0; i--) {
                 zoomFunctions[i].call(this, this.zoom, this._canvas);
             }
@@ -5706,11 +5476,11 @@ MASCP.CondensedSequenceRenderer.prototype.addTextTrack = function(seq,container)
         container.panevents = true;
     }
        
-    canvas.addEventListener('zoomChange', zoomchange,false);
+    bean.add(canvas,'zoomChange', zoomchange,false);
     bean.add(amino_acids[0],'removed',function() {
         canvas.removeEventListener('panstart',panstart);
         bean.remove(canvas,'panend',panend);
-        canvas.removeEventListener('zoomChange',zoomchange);
+        bean.remove(canvas,'zoomChange',zoomchange);
         delete container.panevents;
     });
     return amino_acids;
@@ -6014,7 +5784,7 @@ MASCP.CondensedSequenceRenderer.prototype._resizeContainer = function() {
 
 (function(clazz) {
 
-var vis_change_event = function(e,renderer,visibility) {
+var vis_change_event = function(renderer,visibility) {
     var self = this;
     if ( ! renderer._layer_containers[self.name] || renderer._layer_containers[self.name].length <= 0 ) {
         return;
@@ -6037,9 +5807,9 @@ clazz.prototype.addTrack = function(layer) {
     var renderer = this;
     
     if ( ! this._canvas ) {
-        this.bind('sequencechange',function() {
+        bean.add(this,'sequencechange',function() {
             this.addTrack(layer);
-            this.unbind('sequencechange',arguments.callee);
+            bean.remove(this,'sequencechange',arguments.callee);
         });
         console.log("No canvas, cannot add track, waiting for sequencechange event");
         return;
@@ -6052,15 +5822,17 @@ clazz.prototype.addTrack = function(layer) {
         if ( ! layer_containers[layer.name].track_height) {
             layer_containers[layer.name].track_height = renderer.trackHeight || 4;
         }
-        jQuery(layer).unbind('visibilityChange',vis_change_event).bind('visibilityChange',vis_change_event);
+        bean.remove(layer,'visibilityChange',vis_change_event);
+        bean.add(layer,'visibilityChange',vis_change_event);
         var event_names = ['click','mouseover','mousedown','mousemove','mouseout','mouseup','mouseenter','mouseleave'];
         var ev_function = function(ev,original_event,element) {
-            jQuery(layer).trigger(ev.type,[original_event,element.position_start,element.position_end]);
+            bean.fire(layer,ev.type,[original_event,element.position_start,element.position_end]);
         };
-        for (var i = 0 ; i < event_names.length; i++) {
-            jQuery(layer_containers[layer.name]._event_proxy).bind(event_names[i],ev_function);
-        }
-        jQuery(layer).unbind('removed').bind('removed',function(e,rend) {
+        // for (var i = 0 ; i < event_names.length; i++) {
+        //     bean.add(layer_containers[layer.name]._event_proxy,event_names[i],ev_function);
+        // }
+        bean.remove(layer,'removed');
+        bean.add(layer,'removed',function(e,rend) {
             if (rend) {
                 rend.removeTrack(this);
             } else{
@@ -6426,7 +6198,7 @@ MASCP.CondensedSequenceRenderer.Zoom = function(renderer) {
             var scale_value = Math.abs(parseFloat(zoomLevel)/start_zoom);
             curr_transform = 'scale('+scale_value+') '+(curr_transform || '');
             self._canvas.parentNode.setAttribute('transform',curr_transform);
-            jQuery(self._canvas).trigger('_anim_begin');
+            bean.fire(self._canvas,'_anim_begin');
             if (document.createEvent) {
                 var evObj = document.createEvent('Events');
                 evObj.initEvent('panstart',false,true);
@@ -6448,9 +6220,10 @@ MASCP.CondensedSequenceRenderer.Zoom = function(renderer) {
                 self._canvas.parentNode.setAttribute('transform',curr_transform);
 
                 bean.fire(self._canvas,'panend');
-                jQuery(self._canvas).trigger('_anim_end');
+                bean.fire(self._canvas,'_anim_end');
 
-                jQuery(self._canvas).one('zoomChange',function() {
+                bean.add(self._canvas,'zoomChange',function() {
+                    bean.remove(self._canvas,'zoomChange',arguments.callee);
                     self.refresh();
                     if (typeof center_residue != 'undefined') {
                         var delta = ((start_zoom - zoom_level)/(25))*center_residue;
@@ -6470,20 +6243,17 @@ MASCP.CondensedSequenceRenderer.Zoom = function(renderer) {
             
                 if (self._canvas) {
                     self._canvas.zoom = parseFloat(zoom_level);
-                    if (document.createEvent) {
-                        var evObj = document.createEvent('Events');
-                        evObj.initEvent('zoomChange',false,true);
-                        self._canvas.dispatchEvent(evObj);
-                    } else {
-                        jQuery(self._canvas).trigger('zoomChange');
-                    }
+                    bean.fire(self._canvas,'zoomChange');
                 }
-                jQuery(self).trigger('zoomChange');
+                bean.fire(self,'zoomChange');
             };
         
             if (("ontouchend" in document) && self.zoomCenter && ! no_touch_center ) {
-                jQuery(self).unbind('gestureend');
-                jQuery(self).one('gestureend',end_function);
+                bean.remove(self,'gestureend');
+                bean.add(self,'gestureend',function(){
+                    bean.remove(self,'gestureend',arguments.callee);
+                    end_function();
+                });
                 timeout = 1;
             } else {
                 if (! this.refresh.suspended) {
@@ -6670,23 +6440,24 @@ MASCP.CondensedSequenceRenderer.Navigation = (function() {
             
             var self = this;
 
-            jQuery(layer).bind('removed',function(ev,rend) {
+            bean.add(layer,'removed',function(ev,rend) {
                 self.setGroupVisibility(group);
             });
 
-            jQuery(layer).bind('visibilityChange',function(ev,rend,visible) {
+            bean.add(layer,'visibilityChange',function(rend,visible) {
                 if (group.size() > 0) {            
                     self.setGroupVisibility(group, expanded_map[layer.name] && visible,true);
                     renderer.refresh();
                 }
             });
-            jQuery(group).bind('visibilityChange',function(ev,rend,visible) {
+            bean.add(group,'visibilityChange',function(rend,visible) {
                 if (visible) {
                     self.showLayer(layer,true);
                     expanded_map[layer.name] = true;
                 }
             });
-            jQuery(layer).unbind('_expandevent').bind('_expandevent',function(ev) {
+            bean.remove(layer,'_expandevent')
+            bean.add(layer,'_expandevent',function(ev) {
                 expanded_map[layer.name] = ! expanded_map[layer.name];
                 self.withoutRefresh(function() {
                     self.setGroupVisibility(group,expanded_map[layer.name]);
@@ -7042,8 +6813,8 @@ MASCP.CondensedSequenceRenderer.Navigation = (function() {
         panel_back.push(MASCP.IE ? tracks_button : tracks_button.parentNode);
 
         tracks_button.addEventListener('click',function() {
-            jQuery(self).trigger('toggleEdit');
-            jQuery(self).trigger('click');
+            bean.fire(self,'toggleEdit');
+            bean.fire(self,'click');
         },false);
     
 
@@ -7217,7 +6988,7 @@ MASCP.CondensedSequenceRenderer.Navigation = (function() {
             }
         };
 
-        jQuery(self).bind('toggleEdit',function() {
+        bean.add(self,'toggleEdit',function() {
             edit_enabled = typeof edit_enabled == 'undefined' ? true : ! edit_enabled;
             draganddrop.disabled = ! edit_enabled;
             toggleMouseEvents.call(self,edit_enabled);
@@ -7411,7 +7182,7 @@ MASCP.CondensedSequenceRenderer.Navigation = (function() {
                 expander.style.cursor = 'pointer';
                 expander.addEventListener('click',function(e) {
                     e.stopPropagation();
-                    jQuery(track).trigger('_expandevent');
+                    bean.fire(track,'_expandevent');
                     if (self.isControllerExpanded(track)) {
                         expander.setAttribute('transform','translate(0,'+(y+0.5*height)+') scale('+text_scale+') rotate(90,'+(1.5*t_height)+','+t_metrics[3]+')');                
                     } else {
