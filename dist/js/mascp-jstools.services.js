@@ -2024,7 +2024,6 @@ MASCP.Service.Result.prototype = {
 
 
 MASCP.Service.Result.prototype.render = function() {
-//    return window.jQuery('<span>Result received for '+this.agi+'</span>');
 };
 /**
  * @fileOverview    Classes for reading data from TAIR database
@@ -2301,7 +2300,7 @@ MASCP.ArbitraryDataReader.prototype.retrieve = function(in_agi,cback)
     if (this._SERVER_DATASETS.length == 0){
         MASCP.Service.prototype.retrieve.call(self,"dummy",cback);
         (self.renderers || []).forEach(function(rrend) {
-            jQuery(rrend).trigger('resultsRendered',[self]);
+            rrend.trigger('resultsRendered',[self]);
         });
         return;
     }
@@ -2309,9 +2308,9 @@ MASCP.ArbitraryDataReader.prototype.retrieve = function(in_agi,cback)
         var reader = self._extend(set);
         (self.renderers || []).forEach(function(rrend) {
             reader.setupSequenceRenderer(rrend);
-            rrend.bind('resultsRendered',function(e,rdr) {
+            rrend.bind('resultsRendered',function(rdr) {
                 if (rdr == reader) {
-                    jQuery(rrend).trigger('resultsRendered',[self]);
+                    rrend.trigger('resultsRendered',[self]);
                 }
             });
         });
@@ -2367,7 +2366,7 @@ MASCP.ArbitraryDataReader.prototype.setupSequenceRenderer = function(sequenceRen
                 
         var peps = this.result.getPeptides();
         if (peps.length <= 0) {
-            jQuery(sequenceRenderer).trigger('resultsRendered',[reader]);
+            sequenceRenderer.trigger('resultsRendered',[reader]);
             return;
         }
         MASCP.registerGroup('arbitrary_datasets', {'fullname' : 'Other data', 'color' : '#ff5533' });
@@ -2394,7 +2393,7 @@ MASCP.ArbitraryDataReader.prototype.setupSequenceRenderer = function(sequenceRen
             sequenceRenderer.createGroupController('arbitrary_controller','arbitrary_datasets');
         }
         
-        jQuery(sequenceRenderer).trigger('resultsRendered',[reader]);
+        sequenceRenderer.trigger('resultsRendered',[reader]);
     });
     return this;
 };
@@ -2495,22 +2494,13 @@ MASCP.AtChloroReader.prototype.setupSequenceRenderer = function(sequenceRenderer
             var peptide_bits = sequenceRenderer.getAminoAcidsByPeptide(peptide);
             peptide_bits.addToLayer('atchloro_experimental');
         }
-        jQuery(sequenceRenderer).trigger('resultsRendered',[reader]);
+        sequenceRenderer.trigger('resultsRendered',[reader]);
     });
     return this;
 };
 
 MASCP.AtChloroReader.Result.prototype.render = function()
 {
-    if (this.getPeptides().length > 0) {
-        var a_container = jQuery('<div>MS/MS spectra <input class="group_toggle" type="checkbox"/>AtChloro</div>');
-        jQuery(this.reader.renderers).each(function(i){
-            this.createGroupCheckbox('atchloro_experimental',jQuery('input.group_toggle',a_container));
-        });
-        return a_container;
-    } else {
-        return null;
-    }
 };/** @fileOverview   Classes for reading data from the AtPeptide database
  */
 if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
@@ -2648,22 +2638,13 @@ MASCP.AtPeptideReader.prototype.setupSequenceRenderer = function(sequenceRendere
                 peptide_bits.addToLayer(overlay_name);
             }
         }
-        jQuery(sequenceRenderer).trigger('resultsRendered',[reader]);
+        sequenceRenderer.trigger('resultsRendered',[reader]);
     });
     return this;
 };
 
 MASCP.AtPeptideReader.Result.prototype.render = function()
 {
-    if (this.getPeptides().length > 0) {
-        var a_container = jQuery('<div>MS/MS spectra <input class="group_toggle" type="checkbox"/>AtPeptide</div>');
-        jQuery(this.reader.renderers).each(function(i){
-            this.createGroupCheckbox('atpeptide_experimental',jQuery('input.group_toggle',a_container));
-        });
-        return a_container;
-    } else {
-        return null;
-    }
 };/** @fileOverview   Classes for reading data from the Cdd tool
  */
 if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
@@ -2936,7 +2917,7 @@ MASCP.ExomeReader.prototype.setupSequenceRenderer = function(renderer) {
      }
 
      });
-     jQuery(renderer).trigger('resultsRendered',[reader]);
+     renderer.trigger('resultsRendered',[reader]);
  });
 };
 /** @fileOverview   Classes for reading data from the AtPeptide database
@@ -3055,7 +3036,7 @@ MASCP.GelMapReader.prototype.setupSequenceRenderer = function(sequenceRenderer)
                 peptide_bits.addToLayer(controller_name);
             }
         }
-        jQuery(sequenceRenderer).trigger('resultsRendered',[reader]);
+        sequenceRenderer.trigger('resultsRendered',[reader]);
     });
     return this;
 };
@@ -4740,7 +4721,7 @@ MASCP.InterproReader.prototype.setupSequenceRenderer = function(sequenceRenderer
             sequenceRenderer.createGroupController('interpro_controller','interpro_domains');
         }
 
-        jQuery(sequenceRenderer).trigger('resultsRendered',[reader]);        
+        sequenceRenderer.trigger('resultsRendered',[reader]);
 
     });
     return this;
@@ -4893,7 +4874,7 @@ MASCP.P3dbReader.prototype.setupSequenceRenderer = function(sequenceRenderer)
             sequenceRenderer.createGroupController('p3db_controller','p3db_experimental');
         }        
         
-        jQuery(sequenceRenderer).trigger('resultsRendered',[reader]);
+        sequenceRenderer.trigger('resultsRendered',[reader]);
     });
     return this;
 };
@@ -5035,18 +5016,6 @@ MASCP.Pep2ProReader.Result.prototype._populate_peptides = function(data)
 
 MASCP.Pep2ProReader.Result.prototype.render = function()
 {
-    var params = jQuery.param(this.reader.requestData().data);
-    var total = 0;
-    for (var i in this.spectra) {
-        if (this.spectra.hasOwnProperty(i)) {
-            total += parseInt(this.spectra[i],10);
-        }
-    }
-    var a_container = jQuery('<div>MS/MS spectra <input type="checkbox" class="group_toggle"/><a style="display: block; float: right;" href="http://fgcz-pep2pro.unizh.ch/index.php?'+params+'">Pep2Pro</a></div>');
-    jQuery(this.reader.renderers).each ( function(i){
-        this.createGroupCheckbox('pep2pro',jQuery('input.group_toggle',a_container));
-    });
-    return a_container;
 };
 
 MASCP.Pep2ProReader.prototype._rendererRunner = function(sequenceRenderer) {
@@ -5169,18 +5138,18 @@ MASCP.Pep2ProReader.prototype.setupSequenceRenderer = function(sequenceRenderer)
         MASCP.registerGroup('pep2pro',{ 'fullname' : 'Pep2Pro data','hide_member_controllers' : true, 'hide_group_controller' : true, 'color' : '#000099' });
 
         if ( sequenceRenderer.sequence != this.result.sequence && this.result.sequence != '' ) {
-            jQuery(sequenceRenderer).bind('sequenceChange',function() {
-                jQuery(sequenceRenderer).unbind('sequenceChange',arguments.callee);
+            sequenceRenderer.bind('sequenceChange',function() {
+                sequenceRenderer.unbind('sequenceChange',arguments.callee);
                 reader._groupSummary(sequenceRenderer);
                 reader._rendererRunner(sequenceRenderer);
-                jQuery(sequenceRenderer).trigger('resultsRendered',[reader]);
+                sequenceRenderer.trigger('resultsRendered',[reader]);
             });
             sequenceRenderer.setSequence(this.result.sequence);
             return;
         } else {
             reader._groupSummary(sequenceRenderer);
             reader._rendererRunner(sequenceRenderer);
-            jQuery(sequenceRenderer).trigger('resultsRendered',[reader]);
+            sequenceRenderer.trigger('resultsRendered',[reader]);
         }
     });
 
@@ -5477,7 +5446,7 @@ MASCP.PhosphatReader.prototype.setupSequenceRenderer = function(sequenceRenderer
 
         var exp_peptides = this.result.getAllExperimentalPhosphoPeptides();
         if (exp_peptides.length === 0) {
-            jQuery(sequenceRenderer).trigger('resultsRendered',[reader]);
+            sequenceRenderer.trigger('resultsRendered',[reader]);
             return;         
         }
 
@@ -5487,24 +5456,24 @@ MASCP.PhosphatReader.prototype.setupSequenceRenderer = function(sequenceRenderer
         if (sequenceRenderer.createGroupController) {
             sequenceRenderer.createGroupController('phosphat_experimental','phosphat_peptides');
         }
-        jQuery(exp_peptides).each(function(i) {
+        exp_peptides.forEach(function(pep,i) {
             MASCP.registerLayer('phosphat_peptide_'+i, { 'fullname': 'PhosPhAt MS/MS', 'group':'phosphat_peptides', 'color' : '#000000', 'css' : '.active { background: #999999; color: #000000; } .tracks .active { background: #000000; fill: #000000; } .inactive { display: none; }' });
 
-            var start = this.shift();
-            var end = this.shift();
+            var start = pep.shift();
+            var end = pep.shift();
             var aa = sequenceRenderer.getAminoAcidsByPosition([start+1])[0];
             if (aa) {
                 aa.addBoxOverlay('phosphat_peptide_'+i,end,0.5);
                 icons.push(aa.addBoxOverlay('phosphat_experimental',end,0.5));
             }
-	        jQuery(sequenceRenderer.getAminoAcidsByPosition(this)).each(function() {
-	            this.addToLayer('phosphat_peptide_'+i, { 'height' : 20, 'offset': -2.5 });
-	            icons = icons.concat(this.addToLayer('phosphat_experimental',{ 'height' : 20, 'offset': -2.5}));
+	        sequenceRenderer.getAminoAcidsByPosition(this).forEach(function(aa) {
+	            aa.addToLayer('phosphat_peptide_'+i, { 'height' : 20, 'offset': -2.5 });
+	            icons = icons.concat(aa.addToLayer('phosphat_experimental',{ 'height' : 20, 'offset': -2.5}));
 	        });
         });
 
 
-        jQuery(MASCP.getGroup('phosphat_peptides')).bind('visibilityChange',function(e,rend,vis) {
+        bean.add(MASCP.getGroup('phosphat_peptides'),'visibilityChange',function(rend,vis) {
             if (rend != sequenceRenderer) {
                 return;
             }
@@ -5520,7 +5489,7 @@ MASCP.PhosphatReader.prototype.setupSequenceRenderer = function(sequenceRenderer
             MASCP.getLayer('phosphat_experimental').href = 'http://phosphat.mpimp-golm.mpg.de/app.html?agi='+this.result.agi;        
         }
         
-        jQuery(sequenceRenderer).trigger('resultsRendered',[reader]);
+        sequenceRenderer.trigger('resultsRendered',[reader]);
     });
     return this;
 };
@@ -5691,7 +5660,7 @@ MASCP.PpdbReader.prototype.setupSequenceRenderer = function(sequenceRenderer)
                 peptide_bits.addToLayer(overlay_name);
             }
         }
-        jQuery(sequenceRenderer).trigger('resultsRendered',[reader]);        
+        sequenceRenderer.trigger('resultsRendered',[reader]);        
 
 
 
@@ -5774,7 +5743,7 @@ MASCP.ProcessingReader.prototype.setupSequenceRenderer = function(sequenceRender
             aa.addAnnotation('processing',1, { 'border' : 'rgb(150,0,0)', 'content' : 'Mat', 'angle': 0 });
         }
 
-        jQuery(sequenceRenderer).trigger('resultsRendered',[reader]);
+        sequenceRenderer.trigger('resultsRendered',[reader]);
     });
     return this;
 };
@@ -5874,11 +5843,8 @@ MASCP.PromexReader.prototype.setupSequenceRenderer = function(sequenceRenderer)
             var layer_name = 'promex_experimental_spectrum_'+i;
             peptide_bits.addToLayer(layer_name);
             peptide_bits.addToLayer(overlay_name);
-            // jQuery(MASCP.getLayer('promex_experimental_spectrum_'+i)).bind('click',function() {
-            //     window.open(a_spectra);
-            // });
         }
-        jQuery(sequenceRenderer).trigger('resultsRendered',[reader]);        
+        sequenceRenderer.trigger('resultsRendered',[reader]);        
 
         if (sequenceRenderer.createGroupController) {
             sequenceRenderer.createGroupController('promex_controller','promex_experimental');
@@ -5970,7 +5936,7 @@ MASCP.RippdbReader.prototype.setupSequenceRenderer = function(sequenceRenderer)
                 sequenceRenderer.createGroupController('prippdb_experimental','prippdb_peptides');
             }
             
-            jQuery(MASCP.getGroup('prippdb_peptides')).bind('visibilityChange',function(e,rend,vis) {
+            bean.add(MASCP.getGroup('prippdb_peptides'),'visibilityChange',function(rend,vis) {
                 if (rend != sequenceRenderer) {
                     return;
                 }
@@ -6007,7 +5973,7 @@ MASCP.RippdbReader.prototype.setupSequenceRenderer = function(sequenceRenderer)
 
             }
         }
-        jQuery(sequenceRenderer).trigger('resultsRendered',[reader]);
+        sequenceRenderer.trigger('resultsRendered',[reader]);
     });
     return this;
 };
@@ -6219,7 +6185,7 @@ MASCP.SnpReader.prototype.setupSequenceRenderer = function(renderer) {
         }
         });
         renderer.redrawAnnotations('insertions_controller');
-        jQuery(renderer).trigger('resultsRendered',[reader]);
+        renderer.trigger('resultsRendered',[reader]);
         
     });
 };
@@ -6328,7 +6294,7 @@ MASCP.RnaEditReader.prototype.setupSequenceRenderer = function(renderer) {
         }
         
         });
-        jQuery(renderer).trigger('resultsRendered',[reader]);
+        renderer.trigger('resultsRendered',[reader]);
     });
 };
 
@@ -6543,44 +6509,7 @@ MASCP.SubaReader.Result.prototype.getPredictedLocalisations = function()
 
 MASCP.SubaReader.Result.prototype.mapController = function(inputElement)
 {
-    if ( ! this._map ) {
-        return null;
-    }
-    var map = this._map;
-    inputElement = inputElement ? jQuery(inputElement) : jQuery('<ul><li class="ms"><div style="position: relative; left: 0px; top: 0px; float: left; background-color: #ff0000; width: 1em; height: 1em;"></div><input class="ms" type="checkbox"/> MS</li><li class="gfp"><div style="position: relative; left: 0px; top: 0px; float: left; background-color: #00ff00; width: 1em; height: 1em;"></div><input class="gfp" type="checkbox"/> GFP</li></ul>');
-    
-    if ( ! this.getMassSpecLocalisation() )  {
-        jQuery('li.ms', inputElement).css({ 'display': 'none' });
-    } else {
-        var ms_loc = this._sortLocalisation(this.getMassSpecLocalisation());
-        jQuery('input.ms', inputElement).unbind('change').bind('change', function() {
-            var i;
-            for ( i = ms_loc.length - 1; i >= 0; i--) {
-                if (this.checked) {
-                    map.showKeyword(ms_loc[i], '#ff0000');
-                } else {
-                    map.hideKeyword(ms_loc[i], '#ff0000');                    
-                }
-            }                            
-        }).attr('checked', (ms_loc.length > 0));
-    }
-    if ( ! this.getGfpLocalisation() )  {
-        jQuery('li.gfp', inputElement).css({ 'display': 'none' });
-    } else {
-        var gfp_loc = this._sortLocalisation(this.getGfpLocalisation());
-        jQuery('input.gfp', inputElement).unbind('change').bind('change', function() {
-            var i;
-            for ( i = gfp_loc.length - 1; i >= 0; i--) {
-                if (this.checked) {
-                    map.showKeyword(gfp_loc[i], '#00ff00');
-                } else {
-                    map.hideKeyword(gfp_loc[i], '#00ff00');                    
-                }
-            }                            
-        }).attr('checked', (gfp_loc.length > 0));
-    }
-
-    return inputElement[0];
+    console.log("Deprecated mapController");
 };
 
 MASCP.SubaReader.Result.prototype.render = function()
@@ -6725,7 +6654,7 @@ MASCP.UbiquitinReader.prototype.setupSequenceRenderer = function(sequenceRendere
                 sequenceRenderer.createGroupController(overlay_name,group_name);
             }
             
-            jQuery(MASCP.getGroup(group_name)).bind('visibilityChange',function(e,rend,vis) {
+            bean.add(MASCP.getGroup(group_name),'visibilityChange',function(e,rend,vis) {
                 if (rend != sequenceRenderer) {
                     return;
                 }
@@ -6753,7 +6682,7 @@ MASCP.UbiquitinReader.prototype.setupSequenceRenderer = function(sequenceRendere
                 peptide_bits[peps[i].positions[k] - 1].addToLayer(layer_name);
             }
         }
-        jQuery(sequenceRenderer).trigger('resultsRendered',[reader]);
+        sequenceRenderer.trigger('resultsRendered',[reader]);
     });
     return this;
 };
@@ -7153,7 +7082,7 @@ MASCP.UserdataReader.prototype.setupSequenceRenderer = function(renderer) {
             }
             data_func.call(this,my_data);
         }
-        jQuery(renderer).trigger('resultsRendered',[reader]);        
+        renderer.trigger('resultsRendered',[reader]);        
     });
 };
 
@@ -7595,7 +7524,7 @@ MASCP.ClustalRunner.prototype.setupSequenceRenderer = function(renderer) {
 
     var elements_to_move = [];
 
-    jQuery(renderer).bind('readerRegistered',function(ev,reader) {
+    renderer.bind('readerRegistered',function(reader) {
         if (self == reader) {
             return;
         }
@@ -7699,7 +7628,15 @@ MASCP.ClustalRunner.prototype.setupSequenceRenderer = function(renderer) {
                 for (var i = 0; i < peptide.length; i++ ) {
                     positions.push(start+i);
                 }
-                return this.getAminoAcidsByPosition(positions);
+                var results = this.getAminoAcidsByPosition(positions);
+                if (results.length) {
+                    results.addToLayer = function(layername, fraction, options) {
+                        return results[0].addBoxOverlay(layername,results.length,fraction,options);
+                    };
+                } else {
+                    results.addToLayer = function() {};
+                }
+                return results;
             };
             old.call(reader);
             renderer.sequence = curr_sequence;
@@ -7867,7 +7804,7 @@ MASCP.ClustalRunner.prototype.setupSequenceRenderer = function(renderer) {
             }
         }
         renderer.zoom = 1;
-        jQuery(MASCP.getGroup(group_name)).trigger('visibilityChange',[renderer,true]);
+        bean.fire(MASCP.getGroup(group_name),'visibilityChange',[renderer,true]);
         renderer.refresh();
 
     };
@@ -7880,7 +7817,7 @@ MASCP.ClustalRunner.prototype.setupSequenceRenderer = function(renderer) {
             accs.push(seq.agi.toUpperCase());
         });
 
-        renderer.bind('orderChanged',function(e,order) {
+        renderer.bind('orderChanged',function(order) {
             if (self.result) {
                 redraw_alignments(accs.indexOf(order[(order.indexOf(controller_name)+1)]));
             }
