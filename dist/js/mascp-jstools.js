@@ -342,7 +342,8 @@
     (module.exports = bean) :
     (context['bean'] = bean);
 
-}(this);//"use strict";
+}(this);
+//"use strict";
 
 /**
  *  @fileOverview   Basic classes and defitions for the MASCP services
@@ -2374,6 +2375,7 @@ MASCP.Service.Result.prototype = {
 
 MASCP.Service.Result.prototype.render = function() {
 };
+
 /**
  * @fileOverview    Classes for reading data from TAIR database
  */
@@ -2516,6 +2518,7 @@ MASCP.AccessionReader.Result.prototype.getDescription = function() {
 MASCP.AccessionReader.Result.prototype.getSequence = function() {    
     return (typeof(this._data) == 'object' && this._data.length) ? this._data[0].data[2] : this._data.data[2];
 };
+
 
 /** @fileOverview   Classes for reading data from the ArbitraryData database
  */
@@ -2749,7 +2752,8 @@ MASCP.ArbitraryDataReader.prototype.setupSequenceRenderer = function(sequenceRen
 
 MASCP.ArbitraryDataReader.Result.prototype.render = function()
 {
-};/** @fileOverview   Classes for reading data from the AtChloro database
+};
+/** @fileOverview   Classes for reading data from the AtChloro database
  */
 if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
     throw "MASCP.Service is not defined, required class";
@@ -2850,7 +2854,8 @@ MASCP.AtChloroReader.prototype.setupSequenceRenderer = function(sequenceRenderer
 
 MASCP.AtChloroReader.Result.prototype.render = function()
 {
-};/** @fileOverview   Classes for reading data from the AtPeptide database
+};
+/** @fileOverview   Classes for reading data from the AtPeptide database
  */
 if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
     throw "MASCP.Service is not defined, required class";
@@ -2994,7 +2999,8 @@ MASCP.AtPeptideReader.prototype.setupSequenceRenderer = function(sequenceRendere
 
 MASCP.AtPeptideReader.Result.prototype.render = function()
 {
-};/** @fileOverview   Classes for reading data from the Cdd tool
+};
+/** @fileOverview   Classes for reading data from the Cdd tool
  */
 if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
     throw "MASCP.Service is not defined, required class";
@@ -3149,6 +3155,7 @@ MASCP.CddRunner.prototype.requestData = function()
     };
     
 })(MASCP.CddRunner);
+
 /*
 http://uniprot.org/mapping/?from=ACC+ID&to=REFSEQ_NT_ID&format=list&query=Q9UNA3
  */
@@ -3269,6 +3276,7 @@ MASCP.ExomeReader.prototype.setupSequenceRenderer = function(renderer) {
      renderer.trigger('resultsRendered',[reader]);
  });
 };
+
 /** @fileOverview   Classes for reading data from the AtPeptide database
  */
 if ( typeof MASCP === 'undefined' || typeof MASCP.Service === 'undefined' ) {
@@ -3393,6 +3401,7 @@ MASCP.GelMapReader.prototype.setupSequenceRenderer = function(sequenceRenderer)
 MASCP.GelMapReader.Result.prototype.render = function()
 {
 };
+
 /**
  * @fileOverview    Retrieve data from a Google data source
  */
@@ -4933,6 +4942,7 @@ MASCP.GoogledataReader.prototype.createReader = function(doc, map) {
 };
 
 })();
+
 /** @fileOverview   Classes for reading domains from Interpro 
  */
 if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
@@ -5080,7 +5090,8 @@ MASCP.InterproReader.prototype.setupSequenceRenderer = function(sequenceRenderer
 
 MASCP.InterproReader.Result.prototype.render = function()
 {
-};/** @fileOverview   Classes for reading data from the P3db database
+};
+/** @fileOverview   Classes for reading data from the P3db database
  */
 if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
     throw "MASCP.Service is not defined, required class";
@@ -5232,7 +5243,8 @@ MASCP.P3dbReader.prototype.setupSequenceRenderer = function(sequenceRenderer)
 
 MASCP.P3dbReader.Result.prototype.render = function()
 {
-};/**
+};
+/**
  *  @fileOverview Classes for reading data from the Pep2Pro database using JSON data
  */
 
@@ -5542,7 +5554,8 @@ MASCP.Pep2ProReader.prototype._mergeCounts = function(hash)
         }
     }
     return counts;
-};/** @fileOverview   Classes for reading data from the Phosphat database
+};
+/** @fileOverview   Classes for reading data from the Phosphat database
  */
 if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
     throw "MASCP.Service is not defined, required class";
@@ -5844,6 +5857,7 @@ MASCP.PhosphatReader.prototype.setupSequenceRenderer = function(sequenceRenderer
     });
     return this;
 };
+
 /**
  *  @fileOverview Classes for reading data from the PlantsP database using XML data
  */
@@ -6018,6 +6032,7 @@ MASCP.PpdbReader.prototype.setupSequenceRenderer = function(sequenceRenderer)
     });
     return this;
 };
+
 /** @fileOverview   Classes for reading data from the Processing data
  */
 if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
@@ -6101,7 +6116,8 @@ MASCP.ProcessingReader.prototype.setupSequenceRenderer = function(sequenceRender
 
 MASCP.ProcessingReader.Result.prototype.render = function()
 {
-};/** @fileOverview   Classes for reading data from the Promex database
+};
+/** @fileOverview   Classes for reading data from the Promex database
  */
 if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
     throw "MASCP.Service is not defined, required class";
@@ -6208,7 +6224,8 @@ MASCP.PromexReader.prototype.setupSequenceRenderer = function(sequenceRenderer)
 
 MASCP.PromexReader.Result.prototype.render = function()
 {
-};/** @fileOverview   Classes for reading data from the Rippdb database
+};
+/** @fileOverview   Classes for reading data from the Rippdb database
  */
 if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
     throw "MASCP.Service is not defined, required class";
@@ -6351,7 +6368,8 @@ MASCP.RippdbReader.Result.prototype.getAllExperimentalPositions = function()
 }
 MASCP.RippdbReader.Result.prototype.render = function()
 {
-};/**
+};
+/**
  * @fileOverview    Classes for reading SNP data
  */
 
@@ -6649,6 +6667,7 @@ MASCP.RnaEditReader.prototype.setupSequenceRenderer = function(renderer) {
     });
 };
 
+
 /**
  * @fileOverview    Classes for reading data from the Suba database
  */
@@ -6866,7 +6885,8 @@ MASCP.SubaReader.Result.prototype.mapController = function(inputElement)
 MASCP.SubaReader.Result.prototype.render = function()
 {
     return null;
-};/**
+};
+/**
  * @fileOverview    Classes for reading data from TAIR database
  */
 
@@ -6926,6 +6946,7 @@ MASCP.getSequence = function(agi) {
     }
     return self._reader.result.getSequence(); 
 };
+
 /** @fileOverview   Classes for reading data from the Ubiquitin data
  */
 if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
@@ -7057,7 +7078,8 @@ MASCP.UbiquitinReader.Result.prototype.getAllExperimentalPositions = function()
 }
 MASCP.UbiquitinReader.Result.prototype.render = function()
 {
-};/** @fileOverview   Classes for reading data from the Cdd tool
+};
+/** @fileOverview   Classes for reading data from the Cdd tool
  */
 if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
     throw "MASCP.Service is not defined, required class";
@@ -7125,6 +7147,7 @@ MASCP.UnionDomainReader.prototype.requestData = function() {
     });
     return false;
 };
+
 /**
  * @fileOverview    Classes for reading data from Uniprot database
  */
@@ -7349,6 +7372,7 @@ MASCP.UniprotSecondaryStructureReader.prototype.setupSequenceRenderer = function
         renderer.trigger('resultsRendered',[this]);
     });
 };
+
 
 /**
  * @fileOverview    Classes for getting arbitrary user data onto the GATOR
@@ -7605,7 +7629,7 @@ MASCP.UserdataReader.prototype.setData = function(name,data) {
 
 };
 
-MASCP.UserdataReader.datasets = function(cback) {
+MASCP.UserdataReader.datasets = function(cback,done) {
     MASCP.Service.FindCachedService(this,function(services) {
         var result = [];
         for (var i = 0, len = services.length; i < len; i++){
@@ -7614,10 +7638,14 @@ MASCP.UserdataReader.datasets = function(cback) {
         if (result.forEach) {
             result.forEach(cback);
         }
+        if (done) {
+            done();
+        }
     });
 };
 
-})();/** @fileOverview   Classes for reading data from the Clustal tool
+})();
+/** @fileOverview   Classes for reading data from the Clustal tool
  */
 if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
     throw "MASCP.Service is not defined, required class";
@@ -8210,6 +8238,7 @@ MASCP.ClustalRunner.Result.prototype.getAlignment = function() {
 
     return result;
 };
+
 /** @fileOverview   Classes for reading data from PRIDE */
 if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
     throw "MASCP.Service is not defined, required class";
@@ -8256,6 +8285,7 @@ MASCP.HydropathyRunner.prototype.setupSequenceRenderer = function(renderer,optio
         renderer.trigger('resultsRendered',[this]);
     });
 };
+
 
 
 /** @fileOverview   Classes for reading data from PRIDE */
@@ -8387,6 +8417,7 @@ MASCP.PrideRunner.prototype.setupSequenceRenderer = function(renderer,options) {
         return defaultDataReceived.call(this,data,status);
     };
 })(MASCP.PrideRunner);
+
 
 
 MascotToJSON = function() {
@@ -8551,7 +8582,8 @@ MascotToJSON.prototype.convertReport = function(report,callback) {
 
 if (typeof module != 'undefined' && module.exports){
     module.exports.MascotToJSON = MascotToJSON;
-}/*! Hammer.JS - v1.0.7dev - 2014-01-15
+}
+/*! Hammer.JS - v1.0.7dev - 2014-01-15
  * http://eightmedia.github.com/hammer.js
  *
  * Copyright (c) 2014 Jorik Tangelder <j.tangelder@gmail.com>;
@@ -9931,6 +9963,7 @@ Hammer.gestures.Transform = {
   }
 
 })(window);
+
 /*
  * JSandbox JavaScript Library v0.2.3
  *
@@ -10197,6 +10230,7 @@ var JSandbox = (function (self) {
 	return Sandbox;
 }(self)),
 Sandbox = JSandbox;
+
 /**
  * @fileOverview    Read in sequences to be re-rendered in a block that can be easily annotated.
  */
@@ -11142,6 +11176,7 @@ MASCP.SequenceRenderer.prototype.trigger = function(ev,args)
 {
     bean.fire(this,ev,args);
 };
+
 
 var SVGCanvas = SVGCanvas || (function() {
     
@@ -12237,7 +12272,8 @@ var SVGCanvas = SVGCanvas || (function() {
         };
     });
 
-})();/**
+})();
+/**
  *  @fileOverview   Basic classes and definitions for an SVG-based sequence renderer
  */
 
@@ -14957,6 +14993,7 @@ MASCP.CondensedSequenceRenderer.Zoom = function(renderer) {
     }
     
 })(MASCP.CondensedSequenceRenderer);
+
 MASCP.CondensedSequenceRenderer.Navigation = (function() {
 
     var touch_scale = 1, touch_enabled = false;
@@ -15834,7 +15871,8 @@ MASCP.CondensedSequenceRenderer.Navigation = (function() {
     };
 
     return Navigation;
-})();// Copyright Hiren Joshi - tobe LGPLed
+})();
+// Copyright Hiren Joshi - tobe LGPLed
 /**
  * @fileoverview    Tag visualisation class
  * @author          hirenj
@@ -16184,6 +16222,7 @@ MASCP.TagVisualisation.TagCloud.prototype.tagFactory = function(tagId,tag,row) {
     a_span.textContent = tag;
     return a_span;
 };
+
 /**
  *  @fileOverview   Basic classes and defitions for a Gene Ontology ID based map
  */
