@@ -1378,6 +1378,7 @@ Hammer.gestures.Transform = {
   }
 
 })(window);
+
 /*
  * JSandbox JavaScript Library v0.2.3
  *
@@ -1644,6 +1645,7 @@ var JSandbox = (function (self) {
 	return Sandbox;
 }(self)),
 Sandbox = JSandbox;
+
 /**
  * @fileOverview    Read in sequences to be re-rendered in a block that can be easily annotated.
  */
@@ -2589,6 +2591,7 @@ MASCP.SequenceRenderer.prototype.trigger = function(ev,args)
 {
     bean.fire(this,ev,args);
 };
+
 
 var SVGCanvas = SVGCanvas || (function() {
     
@@ -3684,7 +3687,8 @@ var SVGCanvas = SVGCanvas || (function() {
         };
     });
 
-})();/**
+})();
+/**
  *  @fileOverview   Basic classes and definitions for an SVG-based sequence renderer
  */
 
@@ -6404,6 +6408,7 @@ MASCP.CondensedSequenceRenderer.Zoom = function(renderer) {
     }
     
 })(MASCP.CondensedSequenceRenderer);
+
 MASCP.CondensedSequenceRenderer.Navigation = (function() {
 
     var touch_scale = 1, touch_enabled = false;
@@ -7281,7 +7286,8 @@ MASCP.CondensedSequenceRenderer.Navigation = (function() {
     };
 
     return Navigation;
-})();// Copyright Hiren Joshi - tobe LGPLed
+})();
+// Copyright Hiren Joshi - tobe LGPLed
 /**
  * @fileoverview    Tag visualisation class
  * @author          hirenj
