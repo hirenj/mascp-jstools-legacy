@@ -1950,6 +1950,9 @@ MASCP.SequenceRenderer = (function() {
     };
 
     return function(sequenceContainer) {
+        if (! sequenceContainer) {
+            return this;
+        }
         if (typeof sequenceContainer !== 'undefined') {
             this._container = sequenceContainer;
             if ( ! this._container.style.position) {
@@ -1971,7 +1974,7 @@ MASCP.SequenceRenderer = (function() {
     //            this.showRowNumbers();            
             });
 
-            this.setSequence(sequenceContainer.textContent);
+            this.setSequence(sequenceContainer.textContent || '');
         }
         
         setupTrackOrder(this);
@@ -3691,6 +3694,7 @@ var SVGCanvas = SVGCanvas || (function() {
 /**
  *  @fileOverview   Basic classes and definitions for an SVG-based sequence renderer
  */
+MASCP.svgns = 'http://www.w3.org/2000/svg';
 
 /** Default class constructor
  *  @class      Renders a sequence using a condensed track-based display
@@ -3755,7 +3759,7 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
         }
         var canvas;
         if ( document.implementation.hasFeature("http://www.w3.org/TR/SVG11/feature#BasicStructure", "1.1") ) {
-            var native_canvas = this.win().document.createElementNS(svgns,'svg');
+            var native_canvas = this.win().document.createElementNS(MASCP.svgns,'svg');
             native_canvas.setAttribute('width','100%');
             native_canvas.setAttribute('height','100%');
             this._container.appendChild(native_canvas);
@@ -4496,7 +4500,7 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
         }
         var new_nodes = new_owner._importNode(doc,true);
         if (typeof XPathResult !== 'undefined') {
-            var iterator = new_owner.evaluate('//svg:defs/*',new_nodes,function(ns) { return svgns; } ,XPathResult.ANY_TYPE,null);
+            var iterator = new_owner.evaluate('//svg:defs/*',new_nodes,function(ns) { return MASCP.svgns; } ,XPathResult.ANY_TYPE,null);
             var el = iterator.iterateNext();
             var to_append = [];
             while (el) {
@@ -5329,6 +5333,7 @@ MASCP.CondensedSequenceRenderer.prototype.renderObjects = function(track,objects
 
 MASCP.CondensedSequenceRenderer.prototype.addTextTrack = function(seq,container) {
     var RS = this._RS;
+    var svgns = MASCP.svgns;
     var renderer = this;
     var max_length = 300;
     var canvas = renderer._canvas;
@@ -5797,6 +5802,8 @@ MASCP.CondensedSequenceRenderer.prototype._resizeContainer = function() {
 };
 
 (function(clazz) {
+
+var svgns = MASCP.svgns;
 
 var vis_change_event = function(renderer,visibility) {
     var self = this;
@@ -6414,6 +6421,7 @@ MASCP.CondensedSequenceRenderer.Zoom = function(renderer) {
 })(MASCP.CondensedSequenceRenderer);
 
 MASCP.CondensedSequenceRenderer.Navigation = (function() {
+    var svgns = MASCP.svgns;
 
     var touch_scale = 1, touch_enabled = false;
     if ("ontouchend" in document) {
