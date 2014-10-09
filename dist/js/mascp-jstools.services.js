@@ -3316,7 +3316,6 @@ MASCP.GenomeReader.Result.prototype.getSequences = function() {
         var min = result.min;
         var return_data = [];
         var base_offset = 0;
-        console.log(cds_data);
         uniprots.forEach(function(uniprot) {
             var ends = cds_data[uniprot].reverse().map(function(cd,idx) {
                 var exons = cd.exons;
