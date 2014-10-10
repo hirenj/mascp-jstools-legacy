@@ -3533,24 +3533,9 @@ MASCP.GenomeReader.Result.prototype.getSequences = function() {
     return results;
 };
 
-MASCP.GenomeReader.prototype.calculatePositionForSequence = function(idx,pos) {
+MASCP.GenomeReader.prototype.calculateProteinPositionForSequence = function(idx,pos) {
     var self = this;
     var wanted_identifier = self.sequences[idx].agi;
-    var empty_regions =  [];
-
-    if (wanted_identifier == 'genome') {
-        var calculated_pos = pos;
-        for (var i = 0; i < empty_regions.length; i++) {
-            if (pos > empty_regions[i][1]) {
-                calculated_pos -= (empty_regions[i][1] - empty_regions[i][0]);
-            }
-            if (pos < empty_regions[i][1] && pos > empty_regions[i][0]) {
-                calculated_pos = -1;
-            }
-        }
-        return (calculated_pos);
-    }
-
     var position_genome = pos * 3;
     var cds = self.result._raw_data.data[wanted_identifier.toLowerCase()];
     var target_cds = cds[0];
@@ -3570,8 +3555,21 @@ MASCP.GenomeReader.prototype.calculatePositionForSequence = function(idx,pos) {
             position_genome -= bases;
         }
     }
+    return Math.floor(target_position / 3);
+};
 
-    var calculated_pos = Math.floor(target_position / 3);
+MASCP.GenomeReader.prototype.calculatePositionForSequence = function(idx,pos) {
+    var self = this;
+    var wanted_identifier = self.sequences[idx].agi;
+    var empty_regions =  [];
+    var calculated_pos = pos;
+
+    if (wanted_identifier == 'genome') {
+    // Don't change the genome identifier
+    } else {
+        calculated_pos = self.calculateProteinPositionForSequence(idx,pos);
+    }
+
     for (var i = 0; i < empty_regions.length; i++) {
         if (pos > empty_regions[i][1]) {
             calculated_pos -= (empty_regions[i][1] - empty_regions[i][0]);
@@ -3580,8 +3578,8 @@ MASCP.GenomeReader.prototype.calculatePositionForSequence = function(idx,pos) {
             calculated_pos = -1;
         }
     }
-    return (calculated_pos);
 
+    return (calculated_pos);
 };
 
 (function(serv) {
