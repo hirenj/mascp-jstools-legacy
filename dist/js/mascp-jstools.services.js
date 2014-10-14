@@ -7804,6 +7804,9 @@ MASCP.ClustalRunner.Result.prototype.calculatePositionForSequence = function(idx
             if (pos == actual_position) {
                 return (i+1);
             } else {
+                if (i == 0) {
+                    i = 1;
+                }
                 return -1 * i;
             }
         }
@@ -7895,6 +7898,7 @@ MASCP.ClustalRunner.prototype.setupSequenceRenderer = function(renderer) {
 
         if ( ! renderer.sequence ) {
             renderer.setSequence(aligned[sequence_index])(function() {
+                renderer.sequences = self.sequences;
                 MASCP.registerGroup(group_name, 'Aligned');
                 MASCP.registerLayer(controller_name, { 'fullname' : 'Conservation', 'color' : '#000000' });
                 if (renderer.trackOrder.indexOf(controller_name) < 0) {
@@ -7977,6 +7981,7 @@ MASCP.ClustalRunner.prototype.setupSequenceRenderer = function(renderer) {
             if (self.result) {
                 self.result.aligned_idx = accs.indexOf(order[(order.indexOf(controller_name)+1)]);
                 redraw_alignments(self.result.aligned_idx);
+                renderer.refreshScale();
             }
         });
     });
