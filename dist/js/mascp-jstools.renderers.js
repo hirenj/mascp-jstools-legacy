@@ -3997,7 +3997,7 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
         return aas;
     };
 
-    var drawAxis = function(canvas,lineLength) {
+    var drawAxis = mainDrawAxis = function(canvas,lineLength) {
         var RS = this._RS;
         var self = this;
         var x = 0, i = 0;
@@ -4478,8 +4478,24 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
             defs.appendChild(pattern);
 
             var self = this;
-            var axis = drawAxis.call(self,canv,line_length);
+            renderer._axis_height = 10;
             var aas = drawAminoAcids.call(self,canv);
+            renderer.hideAxis = function() {
+                drawAxis = function(canv) {
+                    bean.add(canv, 'zoomChange', function() {
+                        self._axis_height = 10 / self.zoom;
+                    });
+                    return {};
+                };
+                self._axis_height = 10 / self.zoom;
+                this.redrawAxis();
+            };
+            renderer.showAxis = function() {
+                drawAxis = mainDrawAxis;
+                this.redrawAxis();
+            };
+
+            var axis = drawAxis.call(self,canv,line_length);
             renderer.redrawAxis = function() {
                 bean.fire(axis,'removed');
                 aas.forEach(function(aa) {
@@ -4494,6 +4510,12 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
                 build_sequence_els();
                 renderer.refresh();
             };
+            if ( ! renderer.hide_axis ) {
+                this.showAxis();
+            } else {
+                this.hideAxis();
+            }
+
             renderer._layer_containers = {};
             renderer.enablePrintResizing();
             renderer.enableScaling();
@@ -4907,16 +4929,27 @@ var addTextToElement = function(layerName,width,opts) {
     if ( ! opts ) {
         opts = {};
     }
-    var height = this._renderer._layer_containers[layerName].trackHeight || 4;
+    if (opts.height) {
+        opts.height = opts.height * this._renderer._RS;
+    }
+    var height = opts.height || this._renderer._layer_containers[layerName].trackHeight || 4;
     var text = canvas.text(this._index,0,opts.txt || "Text");
     text.setAttribute('font-size',0.75*height*this._renderer._RS);
     text.setAttribute('font-weight','bolder');
-    text.setAttribute('fill','#ffffff');
+    text.setAttribute('fill', opts.fill || '#ffffff');
     text.setAttribute('stroke','#000000');
     text.setAttribute('stroke-width','5');
     text.setAttribute('style','font-family: '+canvas.font_order);
     text.firstChild.setAttribute('dy','2ex');
     text.setAttribute('text-anchor','middle');
+    if (opts.align) {
+        if (opts.align == "left") {
+            text.setAttribute('text-anchor', 'start');
+        }
+        if (opts.align == 'right') {
+            text.setAttribute('text-anchor', 'end');
+        }
+    }
     if (opts.offset) {
         text.setAttribute('transform','translate('+text.getAttribute('x')+','+text.getAttribute('y')+')');
         text.offset = opts.offset;
@@ -4925,12 +4958,20 @@ var addTextToElement = function(layerName,width,opts) {
             this.setAttribute('x',0);
             this.setAttribute('y',top_offset*renderer._RS / renderer.zoom);
             text.setAttribute('stroke-width', 5/renderer.zoom);
-            text.setAttribute('font-size', 0.75*height);
+            if (opts.height) {
+                text.setAttribute('font-size', 0.75*opts.height/renderer.zoom);
+            } else {
+                text.setAttribute('font-size', 0.75*height);
+            }
         };
     } else {
         text.setHeight = function(height) {
             text.setAttribute('stroke-width', 5/renderer.zoom);
-            text.setAttribute('font-size', 0.75*height);
+            if (opts.height) {
+                text.setAttribute('font-size', 0.75*opts.height/renderer.zoom);
+            } else {
+                text.setAttribute('font-size', 0.75*height);
+            }
         };
     }
     this._renderer._layer_containers[layerName].push(text);
@@ -5426,6 +5467,7 @@ MASCP.CondensedSequenceRenderer.prototype.renderObjects = function(track,objects
     if (objects.length > 0 && objects[0].coalesce ) {
         mark_groups(renderer,objects);
     }
+    var results = [];
     objects.forEach(function(object) {
         var click_reveal;
         var rendered;
@@ -5434,6 +5476,13 @@ MASCP.CondensedSequenceRenderer.prototype.renderObjects = function(track,objects
         }
         if ((typeof object.aa !== 'undefined') && isNaN(object.aa)) {
             return;
+        }
+        if (object.type == "text") {
+            if (object.aa) {
+                rendered = renderer.getAA(parseInt(object.aa)).addTextOverlay(track,1,object.options);
+            } else if (object.peptide) {
+                rendered = renderer.getAminoAcidsByPeptide(object.peptide).addTtextOverlay(track,1,object.options);
+            }
         }
         if (object.type === "box") {
             if (object.aa) {
@@ -5504,7 +5553,9 @@ MASCP.CondensedSequenceRenderer.prototype.renderObjects = function(track,objects
         if ((object.options || {}).zoom_level) {
             rendered.zoom_level = object.options.zoom_level;
         }
+        results.push(rendered);
     });
+    return results;
 };
 
 MASCP.CondensedSequenceRenderer.prototype.addTextTrack = function(seq,container) {
