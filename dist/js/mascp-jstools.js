@@ -360,6 +360,39 @@
  */
 var MASCP = MASCP || {};
 
+if (Object.defineProperty && ! MASCP.IE8 ) {
+    (function() {
+        var ready_callbacks = [];
+        var is_ready = false;
+        Object.defineProperty(MASCP,"ready", {
+            get : function() {
+                if ((ready_callbacks.length === 0) && (! is_ready )) {
+                    return false;
+                }
+                return function() {
+                    ready_callbacks.forEach(function(cb) {
+                        cb.call();
+                    });
+                };
+            },
+            set : function(cb) {
+                if (cb === false || cb === true) {
+                    ready_callbacks = [];
+                    if (cb) {
+                        is_ready = true;
+                    }
+                    return is_ready;
+                } else {
+                    if (is_ready) {
+                        cb.call();
+                        return;
+                    }
+                    ready_callbacks.push(cb);
+                }
+            }
+        });
+    })();
+}
 
 /** Default constructor for Services
  *  @class      Super-class for all MASCP services to retrieve data from
@@ -16797,6 +16830,10 @@ if ('registerElement' in document) {
         createdCallback : {
           value : function() {
             proto.createdCallback.apply(this);
+            if (this.getAttribute('caching')) {
+              this.caching = this.getAttribute('caching');
+            }
+
             if (this.getAttribute('accession')) {
               this.accession = this.getAttribute('accession');
             }
@@ -16805,8 +16842,15 @@ if ('registerElement' in document) {
         attributeChangedCallback: {
           value : function (attrName,oldVal,newVal) {
             proto.attributeChangedCallback.call(this,attrName,oldVal,newVal);
-            if (attrName == 'accession' && this.acc !== newVal) {
+            if (attrName == 'accession' && this.accession !== newVal) {
               this.accession = newVal;
+            }
+            if (attrName == 'caching') {
+              if (newVal && ! this.caching) {
+                this.caching = newVal;
+              } else if (! newVal && this.caching) {
+                this.caching = false;
+              }
             }
           }
         },
@@ -16815,13 +16859,28 @@ if ('registerElement' in document) {
             var self = this;
             self.acc = acc;
             self.setAttribute('accession',acc);
-            get_reader(MASCP.UniprotReader,self.caching).retrieve(self.acc, function(err) {
-              if (!err) {
-                self.renderer.setSequence(this.result.getSequence());
-              }
-            });
+            MASCP.ready = function() {
+              get_reader(MASCP.UniprotReader,self.caching).retrieve(self.acc, function(err) {
+                if (!err) {
+                  self.renderer.setSequence(this.result.getSequence());
+                }
+              });
+            };
           },
           get: function() { return this.acc; }
+        },
+        caching: {
+          set: function(val) {
+            if (val) {
+              this.cachingval = true;
+              this.setAttribute('caching',true);
+            } else {
+              this.removeAttribute('caching');
+            }
+          },
+          get: function() {
+            return this.cachingval;
+          }
         }
       })
     });
