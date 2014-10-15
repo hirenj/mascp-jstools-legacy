@@ -3167,12 +3167,12 @@ MASCP.GenomeReader.prototype.requestData = function()
 
         if ( ! this.geneid) {
             this.geneid = data.hits[0].entrezgene;
-            this.retrieve(this.acc);
+            this.retrieve(this.acc || this.agi);
             return;
         }
         if ( ! this.exons ) {
             this.exons = data.exons;
-            this.retrieve(this.acc);
+            this.retrieve(this.acc || this.agi);
             return;
         }
         var mapped = {};
@@ -3187,6 +3187,11 @@ MASCP.GenomeReader.prototype.requestData = function()
             if (! self.exons[nuc]) {
                 return;
             }
+            if (! self.agi || ! self.acc) {
+                self.acc = uniprot;
+                self.agi = uniprot;
+            }
+
             if ( ! mapped[uniprot] ) {
                 mapped[uniprot] = [];
             }
