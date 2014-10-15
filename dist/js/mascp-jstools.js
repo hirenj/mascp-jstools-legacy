@@ -12588,12 +12588,6 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
 (function(clazz) {
     var createCanvasObject = function() {
         var renderer = this;
-        this.win = function() {
-            if (this._container && this._container.ownerDocument && this._container.ownerDocument.defaultView) {
-                return this._container.ownerDocument.defaultView;
-            }
-            return null;
-        };
 
         if (this._object) {
             if (typeof svgweb != 'undefined') {
@@ -12885,13 +12879,13 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
         var zoomchange = function() {
             var renderer = self;
                renderer._axis_height = parseInt( base_axis_height / renderer.zoom);
-               var pattern = renderer._canvas.ownerDocument.getElementById(renderer.axis_pattern_id);
+               var pattern = renderer._canvas.ownerSVGElement.getElementById(renderer.axis_pattern_id);
+
                thousand_mark_labels.forEach(function(label) {
                 label.setAttribute('visibility','hidden');
                });
 
                if (this.zoom > 3.6) {
-
                    axis_back.setAttribute('transform','translate(-5,'+(0.3*renderer._axis_height*RS)+')');
                    axis_back.setAttribute('height',0.25*renderer._axis_height*RS);
                    pattern.setAttribute('width',10*RS);
@@ -13151,6 +13145,13 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
             results.addToLayer = function() {};
         }
         return results;
+    };
+
+    clazz.prototype.win = function() {
+        if (this._container && this._container.ownerDocument && this._container.ownerDocument.defaultView) {
+            return this._container.ownerDocument.defaultView;
+        }
+        return null;
     };
 
 
@@ -13438,7 +13439,7 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
     };
 
     MASCP.CondensedSequenceRenderer.prototype.importIcons = function(namespace,doc) {
-        var new_owner = this._container_canvas.ownerDocument;
+        var new_owner = this._container_canvas.ownerSVGElement;
         if (this._container_canvas.getElementById('defs_'+namespace)){
             return;
         }
@@ -14497,7 +14498,7 @@ MASCP.CondensedSequenceRenderer.prototype.addTextTrack = function(seq,container)
                 container_width = docwidth;
             }
         }
-        max_size = Math.ceil(10*container_width / RS);
+        max_size = Math.ceil(10*container_width * renderer.zoom / RS);
         if (max_size > seq.length) {
             max_size = seq.length;
         }
@@ -14937,6 +14938,10 @@ clazz.prototype.removeTrack = function(layer) {
     
 };
 var refresh_id = 0;
+clazz.prototype.disablePrintResizing = function() {
+    delete this._media_func;
+};
+
 clazz.prototype.enablePrintResizing = function() {
     if ( ! (this.win() || window).matchMedia ) {
         return;
@@ -14944,19 +14949,19 @@ clazz.prototype.enablePrintResizing = function() {
     if (this._media_func) {
         return this._media_func;
     }
-    var old_zoom;
-    var old_translate;
-    var old_viewbox;
     this._media_func = function(matcher) {
         var self = this;
+        if ( ! self._canvas ) {
+            return;
+        }
         if ( self.grow_container ) {
             if (matcher.matches) {
                 var left_pos = 10*parseInt(self.leftVisibleResidue() / 10)+10;
-                self._canvas.ownerDocument.getElementById(self.axis_pattern_id).setAttribute('x',(left_pos*self._RS));
+                self._canvas.ownerSVGElement.getElementById(self.axis_pattern_id).setAttribute('x',(left_pos*self._RS));
                 delete self._container_canvas.parentNode.cached_width;
                 bean.fire(self._canvas,'panend');
             } else {
-                self._canvas.ownerDocument.getElementById(self.axis_pattern_id).setAttribute('x','0');
+                self._canvas.ownerSVGElement.getElementById(self.axis_pattern_id).setAttribute('x','0');
             }
             return;
         }
@@ -14969,8 +14974,8 @@ clazz.prototype.enablePrintResizing = function() {
                 self.withoutRefresh(function() {
                   self.zoom = a_zoom;
                 });
-                self._canvas.setCurrentTranslateXY(old_translate,0);
-                self._container_canvas.setAttribute('viewBox',old_viewbox);
+                self._canvas.setCurrentTranslateXY(self.old_translate,0);
+                self._container_canvas.setAttribute('viewBox',self.old_viewbox);
                 // self._container.style.height = 'auto';
                 self.old_zoom = null;
                 self.old_translate = null;
@@ -15001,9 +15006,14 @@ clazz.prototype.enablePrintResizing = function() {
         // self.grow_container = false;
     };
     var rend = this;
-    (this.win() || window).matchMedia('print').addListener(function(matcher) {
-        rend._media_func(matcher);
-    });
+    if ( ! rend._bound_media ) {
+        (this.win() || window).matchMedia('print').addListener(function(matcher) {
+            if (rend._media_func) {
+                rend._media_func(matcher);
+            }
+        });
+    }
+    rend._bound_media = true;
 };
 
 clazz.prototype.wireframe = function() {
@@ -15310,11 +15320,22 @@ MASCP.CondensedSequenceRenderer.Zoom = function(renderer) {
                 zoomLevel = 10;
             }
 
+            var self = this;
+
             if (zoomLevel == zoom_level) {
+                if (self._canvas && self._canvas.zoom !== parseFloat(zoom_level)) {
+                    self._canvas.zoom = parseFloat(zoom_level);
+                    var curr_transform = self._canvas.parentNode.getAttribute('transform') || '';
+                    curr_transform = curr_transform.replace(/scale\([^\)]+\)/,'');
+                    var scale_value = 1;
+                    curr_transform = 'scale('+scale_value+') '+(curr_transform || '');
+                    self._canvas.parentNode.setAttribute('transform',curr_transform);
+
+                    bean.fire(self._canvas,'zoomChange');
+                }
                 return;
             }
 
-            var self = this;
 
             if (! self._canvas) {
                 return;
@@ -15414,7 +15435,14 @@ MASCP.CondensedSequenceRenderer.Zoom = function(renderer) {
                 }
             }
         },
-
+        fitZoom: function() {
+            var container_width = renderer._container.cached_width;
+            if ( ! container_width ) {
+                container_width = renderer._container.clientWidth;
+            }
+            var min_zoom_level = renderer.sequence ? (0.3 / 2) * container_width / renderer.sequence.length : 0.5;
+            renderer.zoom = min_zoom_level;
+        },
         getZoom: function() {
             return zoom_level || 1;
         }
@@ -15426,6 +15454,8 @@ MASCP.CondensedSequenceRenderer.Zoom = function(renderer) {
             set : accessors.setZoom
         });
     }
+
+    renderer.fitZoom = accessors.fitZoom;
 
 };
 
@@ -15916,6 +15946,7 @@ MASCP.CondensedSequenceRenderer.Navigation = (function() {
 
     var buildNavPane = function(back_canvas) {
         var self = this;
+        self.zoom = 1;
         self.nav_width_base = 200+(touch_scale - 1)*100;
         var nav_width = self.nav_width_base;
         self.nav_width = self.nav_width_base;
@@ -16025,8 +16056,8 @@ MASCP.CondensedSequenceRenderer.Navigation = (function() {
                     close_group.setAttribute('transform',close_transform);
                     panel_back.setAttribute('visibility','hidden');
                 } else {
-                    panel_back.setAttribute('style',needs_transition+translate(-1*self.nav_width));
-                    tracks_button.setAttribute('style',old_tracks_style + " "+needs_transition+translate(-1*self.nav_width));
+                    panel_back.setAttribute('style',needs_transition+translate(-1*self.nav_width*self.zoom));
+                    tracks_button.setAttribute('style',old_tracks_style + " "+needs_transition+translate(-1*self.nav_width*self.zoom));
                 }
             }
             return true;
@@ -16048,8 +16079,10 @@ MASCP.CondensedSequenceRenderer.Navigation = (function() {
             rect.setAttribute('transform','scale('+zoom+',1) ');
             rect.setAttribute('ry', (base_rounded_corner[1]).toString());
             rect.setAttribute('rx', (base_rounded_corner[0]/zoom).toString());
+            rect.setAttribute('x', parseInt(-10 / zoom).toString());
             self.nav_width = self.nav_width_base / zoom;
             rect.setAttribute('width', (self.nav_width).toString());
+            self.zoom = zoom;
             toggler.call(this,visible);
             self.refresh();
         };
@@ -16109,8 +16142,8 @@ MASCP.CondensedSequenceRenderer.Navigation = (function() {
                 return;
             }
 
-            var ctm = document.getElementById('nav_back').getTransformToElement(track_canvas);
-            var back_width = (document.getElementById('nav_back').getBBox().width + document.getElementById('nav_back').getBBox().x);
+            var ctm = track_canvas.ownerSVGElement.getElementById('nav_back').getTransformToElement(track_canvas);
+            var back_width = (track_canvas.ownerSVGElement.getElementById('nav_back').getBBox().width + track_canvas.ownerSVGElement.getElementById('nav_back').getBBox().x);
             var point = track_canvas.createSVGPoint();
             point.x = back_width;
             point.y = 0;
@@ -16709,6 +16742,92 @@ MASCP.TagVisualisation.TagCloud.prototype.tagFactory = function(tagId,tag,row) {
     return a_span;
 };
 
+if ('registerElement' in document) {
+  (function() {
+    var proto = Object.create(HTMLElement.prototype,{
+        sequence: {
+          set: function(sequence) { this.renderer.setSequence(sequence); },
+          get: function() { return this.renderer.sequence; }
+        },
+        zoom : {
+          set: function(zoom) { this.zoomval = zoom; if (zoom === "auto") { this.renderer.enablePrintResizing(); this.renderer.fitZoom(); } else { this.renderer.disablePrintResizing(); this.renderer.zoom = zoom; } },
+          get: function(zoom) { return this.renderer.zoom; }
+        }
+    });
+    proto.createdCallback = function() {
+      var self = this;
+      var shadow = this.createShadowRoot();
+      shadow.appendChild(shadow.ownerDocument.createElement('div'));
+      this.style.display = 'block';
+      shadow.firstChild.style.overflow = 'hidden';
+      this.renderer = new MASCP.CondensedSequenceRenderer(shadow.firstChild);
+      this.renderer.bind('sequenceChange',function() {
+        self.setAttribute('sequence',self.renderer.sequence);
+        if (self.zoomval == "auto") {
+          self.renderer.fitZoom();
+        }
+      });
+      this.renderer.bind('zoomChange',function() {
+        if (self.zoomval !== 'auto') {
+          self.setAttribute('zoom',self.renderer.zoom);
+        }
+      });
+      this.setAttribute('zoom','auto');
+    };
+    proto.attributeChangedCallback = function(attrName, oldVal, newVal) {
+      if (attrName == 'sequence' && this.sequence !== newVal) {
+        this.sequence = newVal;
+      }
+      if (attrName == 'zoom' && this.zoomval !== newVal) {
+        this.zoom = newVal;
+      }
+    };
+    document.registerElement('gator-viewer', { prototype: proto });
+
+    var get_reader = function(clazz,caching) {
+      var reader = new clazz();
+      if (caching) {
+        MASCP.Service.BeginCaching(reader);
+      }
+      return reader;
+    };
+
+    var uniprot_proto = document.registerElement('gator-uniprot', {
+      prototype: Object.create(proto, {
+        createdCallback : {
+          value : function() {
+            proto.createdCallback.apply(this);
+            if (this.getAttribute('accession')) {
+              this.accession = this.getAttribute('accession');
+            }
+          }
+        },
+        attributeChangedCallback: {
+          value : function (attrName,oldVal,newVal) {
+            proto.attributeChangedCallback.call(this,attrName,oldVal,newVal);
+            if (attrName == 'accession' && this.acc !== newVal) {
+              this.accession = newVal;
+            }
+          }
+        },
+        accession: {
+          set: function(acc) {
+            var self = this;
+            self.acc = acc;
+            self.setAttribute('accession',acc);
+            get_reader(MASCP.UniprotReader,self.caching).retrieve(self.acc, function(err) {
+              if (!err) {
+                self.renderer.setSequence(this.result.getSequence());
+              }
+            });
+          },
+          get: function() { return this.acc; }
+        }
+      })
+    });
+
+  })();
+}
 /**
  *  @fileOverview   Basic classes and defitions for a Gene Ontology ID based map
  */
