@@ -4613,7 +4613,7 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
     };
 
     MASCP.CondensedSequenceRenderer.prototype.importIcons = function(namespace,doc) {
-        var new_owner = this._container_canvas.ownerSVGElement;
+        var new_owner = this._container_canvas.ownerDocument;
         if (this._container_canvas.getElementById('defs_'+namespace)){
             return;
         }
@@ -8007,6 +8007,10 @@ if ('registerElement' in document) {
               if (this.getAttribute('accession')) {
                 this.accession = this.getAttribute('accession');
               }
+
+              if (this.getAttribute('auto')) {
+                this.auto = this.getAttribute('auto');
+              }
             }
           },
           attributeChangedCallback: {
@@ -8014,6 +8018,13 @@ if ('registerElement' in document) {
               gatorViewer.attributeChangedCallback.call(this,attrName,oldVal,newVal);
               if (attrName == 'accession' && this.accession !== newVal) {
                 this.accession = newVal;
+              }
+              if (attrName == "auto") {
+                if (newVal && !this.auto) {
+                  this.auto = true;
+                } else if ( ! newVal && this.auto ) {
+                  this.auto = false;
+                }
               }
               if (attrName == 'caching') {
                 if (newVal && ! this.caching) {
@@ -8024,21 +8035,30 @@ if ('registerElement' in document) {
               }
             }
           },
+          auto : {
+            get: function() { return this.autoRun; },
+            set: function(auto) { this.autoRun = auto; }
+          },
           accession: {
             set: function(acc) {
               var self = this;
               self.acc = acc;
               self.setAttribute('accession',acc);
-              MASCP.ready = function() {
-                get_reader(MASCP.UniprotReader,self.caching).retrieve(self.acc, function(err) {
-                  if (!err) {
-                    self.renderer.setSequence(this.result.getSequence());
-                  }
-                });
-              };
+              if (self.auto) {
+                self.go();
+              }
             },
             get: function() { return this.acc; }
           },
+          go: { value : function() {
+            MASCP.ready = function() {
+              get_reader(MASCP.UniprotReader,self.caching).retrieve(self.acc, function(err) {
+                if (!err) {
+                  self.renderer.setSequence(this.result.getSequence());
+                }
+              });
+            };
+          }},
           caching: {
             set: function(val) {
               if (val) {
@@ -8088,25 +8108,32 @@ if ('registerElement' in document) {
               return this.acc;
             }
           },
+          go : { value: function() {
+            var self = this;
+            self.renderer.grow_container = true;
+            self.renderer.trackOrder = [];
+            var old_zoom = self.zoom;
+            self.renderer.setSequence("M");
+            MASCP.ready = function() {
+              var reader = get_reader(MASCP.GenomeReader,self.caching);
+              reader.geneid = self.geneid;
+              reader.exon_margin = self.exonmargin;
+              reader.registerSequenceRenderer(self.renderer);
+              reader.bind('requestComplete',function() {
+                self.renderer.hideAxis();
+                self.zoom = old_zoom;
+              });
+              reader.retrieve(self.accession);
+            };
+          }},
           geneid: {
             set: function(geneid) {
               var self = this;
               self.ncbigene = geneid;
               self.setAttribute('geneid',geneid);
-              self.renderer.trackOrder = [];
-              var old_zoom = self.zoom;
-              self.renderer.setSequence("M");
-              MASCP.ready = function() {
-                var reader = get_reader(MASCP.GenomeReader,self.caching);
-                reader.geneid = self.geneid;
-                reader.exon_margin = self.exonmargin;
-                reader.registerSequenceRenderer(self.renderer);
-                reader.bind('requestComplete',function() {
-                  self.renderer.hideAxis();
-                  self.zoom = old_zoom;
-                });
-                reader.retrieve(self.accession);
-              };
+              if (self.auto) {
+                self.go();
+              }
             },
             get: function() { return this.ncbigene; }
           }
