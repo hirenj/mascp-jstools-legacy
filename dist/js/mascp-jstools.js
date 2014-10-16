@@ -3800,6 +3800,7 @@ MASCP.GenomeReader.prototype.calculatePositionForSequence = function(idx,pos) {
                         }
                         labs.forEach(function(lab) { if(lab.nodeName == 'rect') { return; } if (hidden) { lab.setAttribute('display','none') } else { lab.removeAttribute('display') } });
                     });
+                    renderer.refresh();
                 }
             };
             MASCP.Service.prototype.registerSequenceRenderer.call(proxy_reader,renderer);
@@ -16965,10 +16966,11 @@ if ('registerElement' in document) {
                 reader.geneid = self.geneid;
                 reader.exon_margin = self.exonmargin;
                 reader.registerSequenceRenderer(self.renderer);
-                reader.retrieve(self.accession, function(err) {
+                reader.bind('requestComplete',function() {
                   self.renderer.hideAxis();
                   self.zoom = old_zoom;
                 });
+                reader.retrieve(self.accession);
               };
             },
             get: function() { return this.ncbigene; }
