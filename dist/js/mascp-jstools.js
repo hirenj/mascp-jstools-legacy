@@ -9135,7 +9135,7 @@ if ('registerElement' in document) {
 
       proto.go = function() {
         var self = this;
-        var config = this.readers.reduce(function(result,reader) { for(var key in reader.configuration) { result[key] = reader.configuration[key] }; return result; },{});
+        var config = this.readers.reduce(function(result,reader) { var confblock = reader.configuration; for(var key in confblock) { result[key] = confblock[key] }; return result; },{});
         MASCP.IterateServicesFromConfig(config,function(err,pref,reader) {
           iterate_readers(err,pref,reader,self.parentNode.accession,self.parentNode.renderer);
         });
@@ -9165,7 +9165,7 @@ if ('registerElement' in document) {
         },
         genomic: {
           get: function() { return this.trackGenomic; },
-          set: function(is) { if(is) { this.trackGenomic = true; } else { this.trackGenomic = false; } }
+          set: function(is) { if(is) { this.trackGenomic = true; this.setAttribute('genomic',true)} else { this.trackGenomic = false; this.removeAttribute('genomic'); } }
         }
       });
       proto.createdCallback = function() {
@@ -9173,13 +9173,16 @@ if ('registerElement' in document) {
         if (this.getAttribute('name')) {
           this.name = this.getAttribute('name');
         }
+        if (this.getAttribute('genomic')) {
+          this.genomic = this.getAttribute('genomic');
+        }
       };
       proto.attributeChangedCallback = function(attrName, oldVal, newVal) {
         if (attrName == "name" && this.name !== newVal) {
           this.name = newVal;
         }
         if (attrName == "genomic") {
-          if ( newVal) {
+          if ( newVal ) {
             this.genomic = true;
           } else {
             this.genomic = false;
@@ -9196,7 +9199,12 @@ if ('registerElement' in document) {
       };
       proto.go = function() {
         var self = this;
-        MASCP.registerLayer(this.name, { fullname: this.name }, [self.parentNode.renderer] );
+        var lay = MASCP.registerLayer(this.name, { fullname: this.name }, [self.parentNode.renderer] );
+        if (this.genomic) {
+          lay.genomic = this.genomic;
+        } else {
+          delete lay.genomic;
+        }
         update_readers.apply(this);
         readerRenderer.go.apply(this);
       };
@@ -14688,7 +14696,7 @@ MASCP.CondensedSequenceRenderer.prototype.renderObjects = function(track,objects
 
         var click_reveal;
         var rendered;
-        if (object.aa && ( ! renderer.getAA(parseInt(object.aa))) ) {
+        if (object.aa && ( ! renderer.getAA(parseInt(object.aa),track)) ) {
             return;
         }
         if ((typeof object.aa !== 'undefined') && isNaN(object.aa)) {
@@ -14696,23 +14704,23 @@ MASCP.CondensedSequenceRenderer.prototype.renderObjects = function(track,objects
         }
         if (object.type == "text") {
             if (object.aa) {
-                rendered = renderer.getAA(parseInt(object.aa)).addTextOverlay(track,1,object.options);
+                rendered = renderer.getAA(parseInt(object.aa),track).addTextOverlay(track,1,object.options);
             } else if (object.peptide) {
-                rendered = renderer.getAminoAcidsByPeptide(object.peptide).addTtextOverlay(track,1,object.options);
+                rendered = renderer.getAminoAcidsByPeptide(object.peptide,track).addTtextOverlay(track,1,object.options);
             }
         }
         if (object.type === "box") {
             if (object.aa) {
-                rendered = renderer.getAA(parseInt(object.aa)).addBoxOverlay(track,parseInt(object.width),1,object.options);
+                rendered = renderer.getAA(parseInt(object.aa),track).addBoxOverlay(track,parseInt(object.width),1,object.options);
             } else if (object.peptide) {
-                rendered = renderer.getAminoAcidsByPeptide(object.peptide).addToLayer(track,1,object.options);
+                rendered = renderer.getAminoAcidsByPeptide(object.peptide,track).addToLayer(track,1,object.options);
             }
         }
         if (object.type == "shape") {
             if (object.aa) {
-                rendered = renderer.getAA(parseInt(object.aa)).addShapeOverlay(track,parseInt(object.width),object.options);
+                rendered = renderer.getAA(parseInt(object.aa),track).addShapeOverlay(track,parseInt(object.width),object.options);
             } else if (object.peptide) {
-                rendered = renderer.getAminoAcidsByPeptide(object.peptide)[0].addShapeOverlay(track, object.peptide.length, object.options);
+                rendered = renderer.getAminoAcidsByPeptide(object.peptide,track)[0].addShapeOverlay(track, object.peptide.length, object.options);
             }
         }
         if (object.type == 'line') {
@@ -14730,7 +14738,7 @@ MASCP.CondensedSequenceRenderer.prototype.renderObjects = function(track,objects
                     }
                 }
 
-                click_reveal = renderer.getAA(parseInt(object.aa)).addToLayer(track,cloned_options_array);
+                click_reveal = renderer.getAA(parseInt(object.aa),track).addToLayer(track,cloned_options_array);
                 click_reveal = click_reveal[1];
                 click_reveal.style.display = 'none';
                 object.options.content = object.options.alt_content;
@@ -14753,7 +14761,7 @@ MASCP.CondensedSequenceRenderer.prototype.renderObjects = function(track,objects
                     cloned_options[key] = object.options[key];
                 }
             }
-            var added = renderer.getAA(parseInt(object.aa)).addToLayer(track,cloned_options);
+            var added = renderer.getAA(parseInt(object.aa),track).addToLayer(track,cloned_options);
             if (click_reveal) {
                 added[1].addEventListener('click',function() {
                     if (click_reveal.style.display === 'none') {
