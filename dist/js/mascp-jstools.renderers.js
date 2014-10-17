@@ -3606,7 +3606,15 @@ var SVGCanvas = SVGCanvas || (function() {
             a_text.setAttribute('x',typeof x == 'string' ? x : x * RS);
             a_text.setAttribute('y',typeof y == 'string' ? y : y * RS);        
             a_text.move = function(new_x,new_width) {
-                this.setAttribute('x',new_x*RS);
+                if ((typeof(this.offset) !== "undefined") && this.getAttribute('transform')) {
+                    var transform_attr = this.getAttribute('transform');
+                    var matches = /translate\(.*[,\s](.*)\)/.exec(transform_attr);
+                    if (matches[1]) {
+                      this.setAttribute('transform','translate('+(new_x*RS)+','+matches[1]+')');
+                    }
+                } else {
+                    this.setAttribute('x',new_x*RS);
+                }
             };
 
             this.appendChild(a_text);
@@ -8106,6 +8114,13 @@ if ('registerElement' in document) {
               if (attrName == 'geneid' && this.geneid !== newVal) {
                 this.geneid = newVal;
               }
+              if (attrName == 'exonmargin' && this.exonmargin != newVal) {
+                this.exonmargin = parseInt(newVal);
+                if (this._genomereader) {
+                  this._genomereader.exon_margin = this.exonmargin;
+                  this.renderer.refreshScale();
+                }
+              }
             }
           },
           accession : {
@@ -8131,6 +8146,7 @@ if ('registerElement' in document) {
               var reader = get_reader(MASCP.GenomeReader,self.caching);
               reader.geneid = self.geneid;
               reader.exon_margin = self.exonmargin;
+              self._genomereader = reader;
               reader.registerSequenceRenderer(self.renderer);
               reader.bind('requestComplete',function() {
                 self.renderer.hideAxis();
