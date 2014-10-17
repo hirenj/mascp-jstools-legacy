@@ -8111,7 +8111,11 @@ if ('registerElement' in document) {
           accession : {
             set: function(acc) {
               this.acc = acc;
-              this.setAttribute('accession',acc);
+              if (acc) {
+                this.setAttribute('accession',acc);
+              } else {
+                this.removeAttribute('accession');
+              }
             },
             get : function() {
               return this.acc;
@@ -8120,6 +8124,7 @@ if ('registerElement' in document) {
           go : { value: function() {
             var self = this;
             self.renderer.trackOrder = [];
+            self.renderer.reset();
             var old_zoom = self.zoom;
             self.renderer.setSequence("M");
             MASCP.ready = function() {
@@ -8131,7 +8136,7 @@ if ('registerElement' in document) {
                 self.renderer.hideAxis();
                 self.zoom = old_zoom;
               });
-              reader.retrieve(self.accession);
+              reader.retrieve(self.accession || ""+self.geneid);
             };
           }},
           geneid: {
