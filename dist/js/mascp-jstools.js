@@ -3642,13 +3642,13 @@ MASCP.GenomeReader.prototype.calculateProteinPositionForSequence = function(idx,
         var start = target_cds.cdsstart > exons[i][0] ? target_cds.cdsstart : exons[i][0];
         var bases = (exons[i][1] - start);
         if (bases >= position_genome) {
-            target_position = start + position_genome - self.result.min;
+            target_position = start + position_genome;
             break;
         } else {
             position_genome -= bases;
         }
     }
-    return Math.floor(target_position / 3);
+    return target_position;
 };
 
 MASCP.GenomeReader.prototype.calculatePositionForSequence = function(idx,pos) {
@@ -9206,7 +9206,7 @@ if ('registerElement' in document) {
     var gatorTrack = (function() {
       var proto = Object.create(readerRenderer,{
         name: {
-          get: function() { return this.trackName; },
+          get: function() { return this.trackName || this.parentNode.accession; },
           set: function(name) { this.trackName = name; this.setAttribute('name',name); update_readers.apply(this); }
         },
         genomic: {
@@ -13532,8 +13532,8 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
         lays.forEach(function(lay) {
             self._layer_containers[lay].forEach(function(el) {
                 if (el.move && el.aa) {
-                    var aa = self.scalePosition(el.aa,el.acc ? el.acc : lay);
-                    var aa_width = self.scalePosition(el.aa+el.aa_width,el.acc ? el.acc : lay ) ;
+                    var aa = self.scalePosition(el.aa,lay ? lay : el.acc);
+                    var aa_width = self.scalePosition(el.aa+el.aa_width,lay ? lay : el.acc ) ;
                     if (aa < 0) {
                         aa *= -1;
                     }
@@ -14113,6 +14113,9 @@ var addElementToLayer = function(layerName,opts) {
 
     this._renderer._layer_containers[layerName].push(tracer_marker);
     var result = [tracer,tracer_marker,bobble];
+    tracer.setAttribute('pointer-events','none');
+    bobble.setAttribute('pointer-events','none');
+    tracer_marker.setAttribute('class',layerName);
     result.move = function(x,width) {
         var transform_attr = tracer_marker.getAttribute('transform');
         var matches = /translate\(.*[,\s](.*)\) scale\((.*)\)/.exec(transform_attr);
@@ -14831,6 +14834,17 @@ MASCP.CondensedSequenceRenderer.prototype.renderObjects = function(track,objects
         }
         if ((object.options || {}).zoom_level) {
             rendered.zoom_level = object.options.zoom_level;
+        }
+        if ((object.options || {}).events ) {
+            object.options.events.forEach(function(ev) {
+                (ev.type || "").split(",").forEach(function(evtype) {
+                    rendered.addEventListener(evtype,function(e) {
+                        e.event_data = ev.data;
+                        e.layer = track;
+                        e.aa = object.aa;
+                    });
+                });
+            });
         }
         results.push(rendered);
     });

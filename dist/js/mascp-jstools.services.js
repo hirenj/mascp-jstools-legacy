@@ -3297,13 +3297,13 @@ MASCP.GenomeReader.prototype.calculateProteinPositionForSequence = function(idx,
         var start = target_cds.cdsstart > exons[i][0] ? target_cds.cdsstart : exons[i][0];
         var bases = (exons[i][1] - start);
         if (bases >= position_genome) {
-            target_position = start + position_genome - self.result.min;
+            target_position = start + position_genome;
             break;
         } else {
             position_genome -= bases;
         }
     }
-    return Math.floor(target_position / 3);
+    return target_position;
 };
 
 MASCP.GenomeReader.prototype.calculatePositionForSequence = function(idx,pos) {
@@ -8861,7 +8861,7 @@ if ('registerElement' in document) {
     var gatorTrack = (function() {
       var proto = Object.create(readerRenderer,{
         name: {
-          get: function() { return this.trackName; },
+          get: function() { return this.trackName || this.parentNode.accession; },
           set: function(name) { this.trackName = name; this.setAttribute('name',name); update_readers.apply(this); }
         },
         genomic: {
