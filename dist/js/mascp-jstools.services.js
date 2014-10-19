@@ -8811,7 +8811,7 @@ if ('registerElement' in document) {
       proto.createdCallback = function() {
         var self = this;
         if (this.getAttribute('data')) {
-          this.data = JSON.parse(this.getAttribute('data'));
+          // this.data = JSON.parse(this.getAttribute('data'));
         }
         gatorReaderProto.createdCallback.apply(this);
       };

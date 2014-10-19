@@ -9156,7 +9156,7 @@ if ('registerElement' in document) {
       proto.createdCallback = function() {
         var self = this;
         if (this.getAttribute('data')) {
-          this.data = JSON.parse(this.getAttribute('data'));
+          // this.data = JSON.parse(this.getAttribute('data'));
         }
         gatorReaderProto.createdCallback.apply(this);
       };
@@ -17444,9 +17444,6 @@ if ('registerElement' in document) {
             value : function() {
               gatorUniprot.createdCallback.apply(this);
               this.renderer.hide_axis = true;
-              if (this.getAttribute('geneid')) {
-                this.geneid = this.getAttribute('geneid');
-              }
               if (this.getAttribute('exonmargin')) {
                 this.exonmargin = parseInt(this.getAttribute('exonmargin'));
               }
