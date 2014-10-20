@@ -8933,7 +8933,7 @@ MascotToJSON.prototype.convertReport = function(report,callback) {
 if (typeof module != 'undefined' && module.exports){
     module.exports.MascotToJSON = MascotToJSON;
 }
-if ('registerElement' in document) {
+if (typeof document !== 'undefined' && 'registerElement' in document) {
   (function() {
 
     var get_renderer = function(renderer_url,callback) {
@@ -14098,6 +14098,8 @@ var addElementToLayer = function(layerName,opts) {
         };
         this._renderer._layer_containers[layerName].tracers.push(tracer);
         this._renderer._layer_containers[layerName].tracers.push(bobble);
+        tracer.setAttribute('pointer-events','none');
+        bobble.setAttribute('pointer-events','none');
         canvas.tracers.push(tracer);
     }
     if (typeof opts.offset == 'undefined' || opts.offset === null) {
@@ -14113,8 +14115,6 @@ var addElementToLayer = function(layerName,opts) {
 
     this._renderer._layer_containers[layerName].push(tracer_marker);
     var result = [tracer,tracer_marker,bobble];
-    tracer.setAttribute('pointer-events','none');
-    bobble.setAttribute('pointer-events','none');
     tracer_marker.setAttribute('class',layerName);
     result.move = function(x,width) {
         var transform_attr = tracer_marker.getAttribute('transform');
@@ -17221,7 +17221,7 @@ MASCP.TagVisualisation.TagCloud.prototype.tagFactory = function(tagId,tag,row) {
     return a_span;
 };
 
-if ('registerElement' in document) {
+if (typeof document !== 'undefined' && 'registerElement' in document) {
   (function() {
     var gatorViewer = (function() {
       var proto = Object.create(HTMLElement.prototype,{

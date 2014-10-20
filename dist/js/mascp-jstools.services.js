@@ -8588,7 +8588,7 @@ MascotToJSON.prototype.convertReport = function(report,callback) {
 if (typeof module != 'undefined' && module.exports){
     module.exports.MascotToJSON = MascotToJSON;
 }
-if ('registerElement' in document) {
+if (typeof document !== 'undefined' && 'registerElement' in document) {
   (function() {
 
     var get_renderer = function(renderer_url,callback) {
