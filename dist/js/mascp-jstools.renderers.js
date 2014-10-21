@@ -3368,17 +3368,22 @@ var SVGCanvas = SVGCanvas || (function() {
             if ( ! opts.bare_element ) {
                 marker.push(this.circle(0,-0.5*r,r));
 
-                marker.lastChild.style.fill = fill_color;
+                marker.lastChild.setAttribute('fill',fill_color);
+                marker.lastChild.setAttribute('border','true');
 
                 marker.push(this.circle(0,1.5*r,r));
 
-                marker.lastChild.style.fill = fill_color;
+                marker.lastChild.setAttribute('fill',fill_color);
+                marker.lastChild.setAttribute('border','true');
 
                 var arrow = this.poly((-0.9*r*RS)+','+(0*r*RS)+' 0,'+(-2.5*r*RS)+' '+(0.9)*r*RS+','+(0*r*RS));
 
+                arrow.setAttribute('fill',fill_color);
+                arrow.setAttribute('stroke-width','0');
 
-                arrow.setAttribute('style','fill:'+fill_color+';stroke-width: 0;');
                 marker.push(arrow);
+                marker.lastChild.setAttribute('border','true');
+
             }
             marker.setAttribute('transform','translate('+((cx)*RS)+','+0.5*cy*RS+') scale(1)');
             marker.setHeight = setHeight;
@@ -3386,8 +3391,11 @@ var SVGCanvas = SVGCanvas || (function() {
             if (typeof symbol == 'string') {
                 if (symbol.match(/^(:?https?:)?\/?.*#/)) {
                     marker.contentElement = this.use(symbol,-r,0,r,r);
+                    marker.contentElement.setAttribute('content','true');
+
                 } else {
                     marker.contentElement = this.text_circle(0,0,2*r,symbol,opts);
+                    marker.contentElement.firstChild.setAttribute('content','true');
                 }
                 marker.push(marker.contentElement);
             } else if (Array.isArray && Array.isArray(symbol)) {
@@ -3420,12 +3428,14 @@ var SVGCanvas = SVGCanvas || (function() {
                     if (symb.match(/^(:?https?:)?\/?.*#/)) {
                         new_el = canvas.use(symb,(x_pos - 0.5)*r,(y_pos - 0.5)*r,r,r);
                         new_el.setAttribute('pointer-events','none');
+                        new_el.setAttribute('content','true');
                     } else {
                         var opts_copy = JSON.parse(JSON.stringify(opts));
                         opts_copy.no_tracer = true;
                         delete opts_copy.offset;
                         delete opts_copy.height;
                         new_el = canvas.text_circle(x_pos*r,y_pos*r,1.75*r,symb,opts_copy);
+                        new_el.firstChild.setAttribute('content','true');
                     }
                     var curr_transform = new_el.getAttribute('transform');
                     curr_transform = curr_transform + ' rotate('+(rotate_amount)+','+0*r*RS+','+y_pos*r*RS+')';
@@ -3437,15 +3447,18 @@ var SVGCanvas = SVGCanvas || (function() {
                 marker.contentElement = this.group();
                 if (! opts.bare_element ) {
                     marker.contentElement.push(this.text_circle(0,0.5*r,1.75*r,"",opts));
+                    marker.contentElement.lastChild.firstChild.setAttribute('content','true');
                 }
                 if (symbol) {
                     if ( ! opts.bare_element ) {
                         symbol.setAttribute('transform','translate(0,'+(0.5*r*RS)+')');
                     }
+                    symbol.setAttribute('content','true');
                     marker.contentElement.push(symbol);
                 }
                 marker.push(marker.contentElement);
             }
+            marker.setAttribute('marker','true');
             return marker;
         };
 
@@ -3486,12 +3499,12 @@ var SVGCanvas = SVGCanvas || (function() {
             var marker_group = this.group();
 
 
-            var text = this.text(0,dim.CY-0.5*dim.R,txt);
+            var text = this.text(0,dim.CY,txt);
             text.setAttribute('font-size',10*RS);
             text.setAttribute('font-weight',opts.weight || 'bolder');
             text.setAttribute('fill',opts.text_fill || '#ffffff');
             text.setAttribute('style','font-family: sans-serif; text-anchor: middle;');
-            text.firstChild.setAttribute('dy','1.5ex');
+            text.firstChild.setAttribute('dy','0.35em');
             text.setAttribute('text-anchor','middle');
             var back;
 
@@ -4906,8 +4919,8 @@ var addBoxOverlayToElement = function(layerName,width,fraction,opts) {
     }
     this._renderer._layer_containers[layerName].push(rect);
     rect.setAttribute('class',layerName);
-    rect.style.strokeWidth = '0px';
     rect.setAttribute('visibility', 'hidden');
+    rect.setAttribute('stroke-width','0px');
     if (typeof(fraction) !== 'undefined') {
         rect.setAttribute('opacity',fraction);
         rect.value = fraction;
@@ -5568,6 +5581,9 @@ MASCP.CondensedSequenceRenderer.prototype.renderObjects = function(track,objects
         }
         if ((object.options || {}).zoom_level) {
             rendered.zoom_level = object.options.zoom_level;
+        }
+        if (object.identifier) {
+            rendered.setAttribute('identifier',object.identifier);
         }
         if ((object.options || {}).events ) {
             object.options.events.forEach(function(ev) {
@@ -8088,6 +8104,12 @@ if (typeof document !== 'undefined' && 'registerElement' in document) {
       return reader;
     };
 
+    var fire_event = function(targ,name) {
+      var ev = document.createEvent("Events");
+      ev.initEvent(name, false, true);
+      targ.dispatchEvent(ev);
+    };
+
     var gatorUniprot = (function() {
         var uniprot_proto = document.registerElement('gator-uniprot', {
         prototype: Object.create(gatorViewer, {
@@ -8149,6 +8171,10 @@ if (typeof document !== 'undefined' && 'registerElement' in document) {
             MASCP.ready = function() {
               get_reader(MASCP.UniprotReader,self.caching).retrieve(self.accession, function(err) {
                 if (!err) {
+                  self.renderer.bind('sequenceChange',function() {
+                    self.renderer.unbind('sequenceChange',arguments.callee);
+                    fire_event(self,'ready');
+                  });
                   self.renderer.setSequence(this.result.getSequence());
                 }
               });
@@ -8172,6 +8198,7 @@ if (typeof document !== 'undefined' && 'registerElement' in document) {
       return uniprot_proto.prototype;
     })();
     var gatorGene = (function() {
+
         var gene_proto = document.registerElement('gator-gene', {
         prototype: Object.create(gatorUniprot, {
           createdCallback : {
@@ -8230,6 +8257,7 @@ if (typeof document !== 'undefined' && 'registerElement' in document) {
               reader.bind('requestComplete',function() {
                 self.renderer.hideAxis();
                 self.setAttribute('zoom',old_zoom);
+                fire_event(self,'ready');
               });
               reader.retrieve(self.accession || ""+self.geneid);
             });
