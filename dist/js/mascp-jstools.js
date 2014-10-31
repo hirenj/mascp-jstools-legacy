@@ -3570,7 +3570,7 @@ if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
 
   var render_domains = function(renderer,domains,acc,track,offset,height,namespace) {
       var target_layer = track || acc.toString();
-      renderer.text_els = [];
+
       MASCP.registerLayer(target_layer, { 'fullname' : "All domains", 'color' : '#aaaaaa' },[renderer]);
       var domain_keys = [];
       for (var domain in domains) {
@@ -3679,11 +3679,7 @@ if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
                 results[target_layer].push( { "aa" : start, "type" : "box", "width": end-start+1, "options" : { "offset" : offset, "height" : height } });
                 results[lay_name].push( { "aa" : start, "type" : "box", "width": end-start+1, "options" : { } });
             }
-
-            // var a_text = renderer.getAA(parseInt(0.5*(start+end))).addTextOverlay(target_layer,0,{ "offset" : offset, 'txt' : domains[dom].name });
-            // a_text.setAttribute('fill','#111111');
-            // a_text.setAttribute('stroke','#999999');
-            // renderer.text_els.push([a_text,all_box]);
+            results[target_layer].push( { "aa" : start, "type" : "text", "width" : end-start+1, "options" :{ "txt" : domains[dom].name, "offset" : offset, 'fill' : '#111', 'stroke' : '#999' } });
           }
           done_anno = true;
         });
@@ -4403,7 +4399,7 @@ MASCP.GenomeReader.prototype.calculatePositionForSequence = function(idx,pos) {
                     calculated_pos -= (introns[i][1] - introns[i][0]);
                 }
                 if (pos < introns[i][1] && pos > introns[i][0]) {
-                    calculated_pos = -1 * (introns[i][0] - reader.result.min);
+                    calculated_pos = (introns[i][1] - reader.result.min);
                 }
             }
             if (calculated_pos < 3) {
@@ -12999,6 +12995,16 @@ var SVGCanvas = SVGCanvas || (function() {
             return a_g;
         };
 
+        canvas.clipPath = function() {
+            var el = document.createElementNS(svgns,'clipPath');
+            this.appendChild(el);
+            el.push = function(new_el) {
+                el.appendChild(new_el);
+            };
+            return el;
+        };
+
+
         canvas.line = function(x,y,x2,y2) {
             var a_line = document.createElementNS(svgns,'line');
             a_line.setAttribute('x1', typeof x == 'string' ? x : x * RS);
@@ -14278,7 +14284,7 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
         for (var i = 0; i < new_aas.length; i++) {
             if (results[i]) {
                 results[i].original_index = aas[i];
-                results[i].accession = acc ? acc : layer;
+                results[i].accession = layer ? layer : acc;
             }
         }
         return results;
@@ -14856,7 +14862,7 @@ var addBoxOverlayToElement = function(layerName,width,fraction,opts) {
         var orig_func = arguments.callee;
         var self = this;
         bean.add(this._renderer,'sequencechange',function() {
-            bean.remove(this._renderer,'sequencechange',arguments.callee);            
+            bean.remove(this._renderer,'sequencechange',arguments.callee);
             orig_func.call(self,layerName,width,opts);
         });
         log("Delaying rendering, waiting for sequence change");
@@ -14864,7 +14870,7 @@ var addBoxOverlayToElement = function(layerName,width,fraction,opts) {
     }
 
 
-    var rect =  canvas.rect(-0.25+this._index,60,width || 1,4,opts);
+    var rect =  canvas.rect(-0.25+this._index,60,width || 1, opts.height || 4 ,opts);
     var rect_x = parseFloat(rect.getAttribute('x'));
     var rect_max_x = rect_x + parseFloat(rect.getAttribute('width'));
     var container = this._renderer._layer_containers[layerName];
@@ -14898,12 +14904,13 @@ var addBoxOverlayToElement = function(layerName,width,fraction,opts) {
     if ((typeof(opts.offset) !== "undefined") || opts.height_scale) {
         var offset_val = opts.offset;
         rect.setHeight = function(hght) {
+            var height_val = opts.height ? (opts.height*renderer._RS/renderer.zoom) : hght*(opts.height_scale || 1);
             if (opts.align == 'bottom') {
                 this.setAttribute('y',(offset_val*renderer._RS/renderer.zoom)-(hght*(opts.height_scale || 1)) );
-                this.setAttribute('height',hght*(opts.height_scale || 1));
+                this.setAttribute('height',height_val);
             } else {
                 this.setAttribute('y',offset_val*renderer._RS/renderer.zoom);
-                this.setAttribute('height',hght*(opts.height_scale || 1));
+                this.setAttribute('height',height_val);
             }
         };
     }
@@ -14930,14 +14937,19 @@ var addTextToElement = function(layerName,width,opts) {
         opts.height = opts.height * this._renderer._RS;
     }
     var height = opts.height || this._renderer._layer_containers[layerName].trackHeight || 4;
-    var text = canvas.text(this._index,0,opts.txt || "Text");
-    text.setAttribute('font-size',0.75*height*this._renderer._RS);
+    var position = this._index;
+    if (width > 1) {
+        position = position + Math.floor(0.5*width);
+    }
+    var text_scale = (4/3);
+    var text = canvas.text(position,0,opts.txt || "Text");
+    text.setAttribute('font-size',text_scale*height);
     text.setAttribute('font-weight','bolder');
     text.setAttribute('fill', opts.fill || '#ffffff');
     text.setAttribute('stroke','#000000');
     text.setAttribute('stroke-width','5');
     text.setAttribute('style','font-family: '+canvas.font_order);
-    text.firstChild.setAttribute('dy','2ex');
+    text.firstChild.setAttribute('dy','1.3ex');
     text.setAttribute('text-anchor','middle');
     if (opts.align) {
         if (opts.align == "left") {
@@ -14947,28 +14959,49 @@ var addTextToElement = function(layerName,width,opts) {
             text.setAttribute('text-anchor', 'end');
         }
     }
-    if (opts.offset) {
+    if (width > 1) {
+        var clip = canvas.clipPath();
+        var mask = canvas.rect(-0.5*width,opts.offset || 0,width,height);
+        clip.push(mask);
+        mask.removeAttribute('y');
+        var mask_id = 'id' + (new Date()).getTime();
+        clip.setAttribute('id',mask_id);
+        text.setAttribute('clip-path','url(#'+mask_id+')');
+    }
+    if (typeof opts.offset !== 'undefined') {
         text.setAttribute('transform','translate('+text.getAttribute('x')+','+text.getAttribute('y')+')');
         text.offset = opts.offset;
         text.setHeight = function(height) {
             var top_offset = this.offset;
             this.setAttribute('x',0);
             this.setAttribute('y',top_offset*renderer._RS / renderer.zoom);
-            text.setAttribute('stroke-width', 5/renderer.zoom);
+            if (mask) mask.setAttribute('y',this.getAttribute('y'));
+            this.setAttribute('stroke-width', 5/renderer.zoom);
             if (opts.height) {
-                text.setAttribute('font-size', 0.75*opts.height/renderer.zoom);
+                this.setAttribute('font-size', text_scale*opts.height/renderer.zoom);
+                if (mask) mask.setAttribute('height',opts.height/renderer.zoom);
             } else {
-                text.setAttribute('font-size', 0.75*height);
+                this.setAttribute('font-size', text_scale*height);
+                if (mask) mask.setAttribute('height',height);
             }
         };
     } else {
         text.setHeight = function(height) {
             text.setAttribute('stroke-width', 5/renderer.zoom);
             if (opts.height) {
-                text.setAttribute('font-size', 0.75*opts.height/renderer.zoom);
+                text.setAttribute('font-size', text_scale*opts.height/renderer.zoom);
+                if (mask) mask.setAttribute('height',opts.height/renderer.zoom);
             } else {
-                text.setAttribute('font-size', 0.75*height);
+                text.setAttribute('font-size', text_scale*height);
+                if (mask) mask.setAttribute('height',height);
             }
+        };
+    }
+    if (width > 1) {
+        text.move = function(new_x,new_width) {
+            if (mask) mask.setAttribute('x',(-1*new_width*renderer._RS*0.5));
+            if (mask) mask.setAttribute('width',new_width*renderer._RS);
+            text.setAttribute('x',(new_x + parseInt(0.5*new_width))*renderer._RS );
         };
     }
     this._renderer._layer_containers[layerName].push(text);
@@ -15511,7 +15544,11 @@ MASCP.CondensedSequenceRenderer.prototype.renderObjects = function(track,objects
         }
         if (object.type == "text") {
             if (object.aa) {
-                rendered = renderer.getAA(parseInt(object.aa),track).addTextOverlay(track,1,object.options);
+                if (object.width) {
+                    rendered = renderer.getAA(parseInt(object.aa),track).addTextOverlay(track,object.width,object.options);
+                } else {
+                    rendered = renderer.getAA(parseInt(object.aa),track).addTextOverlay(track,1,object.options);
+                }
             } else if (object.peptide) {
                 rendered = renderer.getAminoAcidsByPeptide(object.peptide,track).addTtextOverlay(track,1,object.options);
             }
