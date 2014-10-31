@@ -5001,7 +5001,7 @@ var addTextToElement = function(layerName,width,opts) {
         var mask = canvas.rect(-0.5*width,opts.offset || 0,width,height);
         clip.push(mask);
         mask.removeAttribute('y');
-        var mask_id = 'id' + (new Date()).getTime();
+        var mask_id = 'id' + (new Date()).getTime()+"_"+clip.parentNode.childNodes.length;
         clip.setAttribute('id',mask_id);
         text.setAttribute('clip-path','url(#'+mask_id+')');
     }
@@ -7452,9 +7452,10 @@ MASCP.CondensedSequenceRenderer.Navigation = (function() {
             if (track_canvas.getAttribute('display') == 'none' || track_canvas.style.display == 'none') {
                 return;
             }
-
-            var ctm = track_canvas.ownerSVGElement.getElementById('nav_back').getTransformToElement(track_canvas);
-            var back_width = (track_canvas.ownerSVGElement.getElementById('nav_back').getBBox().width + track_canvas.ownerSVGElement.getElementById('nav_back').getBBox().x);
+            var nav_back = track_canvas.ownerSVGElement.getElementById('nav_back');
+            // nav_back = document.getElementById('nav_back');
+            var ctm = track_canvas.getTransformToElement(nav_back).inverse();
+            var back_width = (nav_back.getBBox().width + nav_back.getBBox().x);
             var point = track_canvas.createSVGPoint();
             point.x = back_width;
             point.y = 0;
