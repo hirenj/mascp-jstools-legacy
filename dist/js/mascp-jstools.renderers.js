@@ -5369,7 +5369,9 @@ var addAnnotationToLayer = function(layerName,width,opts) {
 };
 
 var scaledAddShapeOverlay = function(layername,width,opts) {
-    var res = addShapeToElement.call(this,layername,Math.abs(this._renderer.scalePosition(this.original_index+width,this.accession ? this.accession : layername)) - 1 - this._index,opts);
+    var start = this._index;
+    var end = Math.abs(this._renderer.scalePosition(this.original_index+width,this.accession ? this.accession : layername)) - 1;
+    var res = addShapeToElement.call(start < end ? this : this._renderer._sequence_els[end],layername, Math.abs(end - start),opts);
     res.aa = this.original_index;
     res.aa_width = width;
     res.acc = this.acc;
@@ -5377,7 +5379,11 @@ var scaledAddShapeOverlay = function(layername,width,opts) {
 };
 
 var scaledAddBoxOverlay = function(layername,width,fraction,opts) {
-    var res = addBoxOverlayToElement.call(this,layername,Math.abs(this._renderer.scalePosition(this.original_index+width,this.accession ? this.accession : layername)) - 1 - this._index,fraction,opts);
+    var start = this._index;
+    var end = Math.abs(this._renderer.scalePosition(this.original_index+width,this.accession ? this.accession : layername)) - 1;
+
+    var res = addBoxOverlayToElement.call(start < end ? this : this._renderer._sequence_els[end],layername,Math.abs(end - start),fraction,opts);
+
     if (! (opts || {}).merge ) {
         res.aa_width = width;
         res.aa = this.original_index;
@@ -5392,7 +5398,9 @@ var scaledAddBoxOverlay = function(layername,width,fraction,opts) {
 };
 
 var scaledAddTextOverlay = function(layername,width,opts) {
-    var res = addTextToElement.call(this,layername,Math.abs(this._renderer.scalePosition(this.original_index+width,this.accession ? this.accession : layername)) - 1 - this._index,opts);
+    var start = this._index;
+    var end = Math.abs(this._renderer.scalePosition(this.original_index+width,this.accession ? this.accession : layername)) - 1;
+    var res = addTextToElement.call(start < end ? this : this._renderer._sequence_els[end],layername,Math.abs(end - start),opts);
     res.aa = this.original_index;
     res.aa_width = width;
     res.acc = this.accession;
@@ -5400,7 +5408,9 @@ var scaledAddTextOverlay = function(layername,width,opts) {
 };
 
 var scaledAddToLayerWithLink = function(layername,url,width) {
-    var res = addElementToLayerWithLink.call(this,layername,url,Math.abs(this._renderer.scalePosition(this.original_index+width,this.accession ? this.accession : layername)) - 1 - this._index);
+    var start = this._index;
+    var end = Math.abs(this._renderer.scalePosition(this.original_index+width,this.accession ? this.accession : layername)) - 1;
+    var res = addElementToLayerWithLink.call(start < end ? this : this._renderer._sequence_els[end],layername,url,Math.abs(end - start));
     res.aa = this.original_index;
     res.acc = this.accession;
     return res;

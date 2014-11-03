@@ -4252,12 +4252,28 @@ MASCP.GenomeReader.Result.prototype.getIntrons = function(margin) {
     return results;
 };
 
+MASCP.GenomeReader.prototype.proteinLength = function(target_cds) {
+    var exons = target_cds.exons;
+    var total = 0;
+    for (var i = 0; i < exons.length; i++) {
+        if (target_cds.cdsstart > exons[i][1] & target_cds.cdsstart > exons[i][0]) {
+            continue;
+        }
+        if (target_cds.cdsend < exons[i][0]) {
+            continue;
+        }
+
+        var start = target_cds.cdsstart > exons[i][0] ? target_cds.cdsstart : exons[i][0];
+        var end = target_cds.cdsend < exons[i][1] ? target_cds.cdsend : exons[i][1];
+        total += (end - start);
+    }
+    return Math.floor(total/3)-1;
+};
+
 MASCP.GenomeReader.prototype.calculateProteinPositionForSequence = function(idx,pos) {
     var self = this;
     var wanted_identifier = idx;
-    var position_genome = pos * 3;
     var cds = self.result._raw_data.data[wanted_identifier.toLowerCase()];
-
     if (! cds ) {
         return -1;
     }
@@ -4276,6 +4292,13 @@ MASCP.GenomeReader.prototype.calculateProteinPositionForSequence = function(idx,
 
     var target_cds = cds[0] || {};
     var exons = target_cds.exons || [];
+
+    if (target_cds.strand == -1) {
+        pos = self.proteinLength(target_cds) - pos;
+    }
+    var position_genome = pos * 3;
+
+
     var target_position;
 
     for (var i = 0; i < exons.length; i++) {
@@ -15343,7 +15366,9 @@ var addAnnotationToLayer = function(layerName,width,opts) {
 };
 
 var scaledAddShapeOverlay = function(layername,width,opts) {
-    var res = addShapeToElement.call(this,layername,Math.abs(this._renderer.scalePosition(this.original_index+width,this.accession ? this.accession : layername)) - 1 - this._index,opts);
+    var start = this._index;
+    var end = Math.abs(this._renderer.scalePosition(this.original_index+width,this.accession ? this.accession : layername)) - 1;
+    var res = addShapeToElement.call(start < end ? this : this._renderer._sequence_els[end],layername, Math.abs(end - start),opts);
     res.aa = this.original_index;
     res.aa_width = width;
     res.acc = this.acc;
@@ -15351,7 +15376,11 @@ var scaledAddShapeOverlay = function(layername,width,opts) {
 };
 
 var scaledAddBoxOverlay = function(layername,width,fraction,opts) {
-    var res = addBoxOverlayToElement.call(this,layername,Math.abs(this._renderer.scalePosition(this.original_index+width,this.accession ? this.accession : layername)) - 1 - this._index,fraction,opts);
+    var start = this._index;
+    var end = Math.abs(this._renderer.scalePosition(this.original_index+width,this.accession ? this.accession : layername)) - 1;
+
+    var res = addBoxOverlayToElement.call(start < end ? this : this._renderer._sequence_els[end],layername,Math.abs(end - start),fraction,opts);
+
     if (! (opts || {}).merge ) {
         res.aa_width = width;
         res.aa = this.original_index;
@@ -15366,7 +15395,9 @@ var scaledAddBoxOverlay = function(layername,width,fraction,opts) {
 };
 
 var scaledAddTextOverlay = function(layername,width,opts) {
-    var res = addTextToElement.call(this,layername,Math.abs(this._renderer.scalePosition(this.original_index+width,this.accession ? this.accession : layername)) - 1 - this._index,opts);
+    var start = this._index;
+    var end = Math.abs(this._renderer.scalePosition(this.original_index+width,this.accession ? this.accession : layername)) - 1;
+    var res = addTextToElement.call(start < end ? this : this._renderer._sequence_els[end],layername,Math.abs(end - start),opts);
     res.aa = this.original_index;
     res.aa_width = width;
     res.acc = this.accession;
@@ -15374,7 +15405,9 @@ var scaledAddTextOverlay = function(layername,width,opts) {
 };
 
 var scaledAddToLayerWithLink = function(layername,url,width) {
-    var res = addElementToLayerWithLink.call(this,layername,url,Math.abs(this._renderer.scalePosition(this.original_index+width,this.accession ? this.accession : layername)) - 1 - this._index);
+    var start = this._index;
+    var end = Math.abs(this._renderer.scalePosition(this.original_index+width,this.accession ? this.accession : layername)) - 1;
+    var res = addElementToLayerWithLink.call(start < end ? this : this._renderer._sequence_els[end],layername,url,Math.abs(end - start));
     res.aa = this.original_index;
     res.acc = this.accession;
     return res;
