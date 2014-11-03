@@ -4354,7 +4354,11 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
 
     clazz.prototype.win = function() {
         if (this._container && this._container.ownerDocument && this._container.ownerDocument.defaultView) {
-            return this._container.ownerDocument.defaultView;
+            var return_val = this._container.ownerDocument.defaultView;
+            if (typeof return_val === 'object') {
+                return_val = return_val[Object.keys(return_val)[0]];
+            }
+            return return_val;
         }
         return null;
     };
@@ -7452,8 +7456,10 @@ MASCP.CondensedSequenceRenderer.Navigation = (function() {
             if (track_canvas.getAttribute('display') == 'none' || track_canvas.style.display == 'none') {
                 return;
             }
+            if (ctm_refresh.length < 1) {
+                return;
+            }
             var nav_back = track_canvas.ownerSVGElement.getElementById('nav_back');
-            // nav_back = document.getElementById('nav_back');
             var ctm = track_canvas.getTransformToElement(nav_back).inverse();
             var back_width = (nav_back.getBBox().width + nav_back.getBBox().x);
             var point = track_canvas.createSVGPoint();
