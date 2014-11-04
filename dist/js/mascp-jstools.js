@@ -2323,10 +2323,10 @@ base.retrieve = function(agi,callback)
             cback.call(null,[]);
         };
         
-        begin_transaction = function(callback) {
+        begin_transaction = function(callback,trans) {
             // No support for transactions here. Do nothing.
             setTimeout(function(){
-                callback();
+                callback({"transaction": trans});
             },0);
         };
         end_transaction = function(callback) {
@@ -18113,7 +18113,7 @@ if (typeof document !== 'undefined' && 'registerElement' in document) {
         var dragger = new GOMap.Diagram.Dragger();
 
         var scroll_box = shadow.ownerDocument.createElement('div');
-        scroll_box.style.height = '1em';
+        scroll_box.style.height = '24px';
         shadow.appendChild(scroll_box);
 
         self.renderer.getVisibleLength = function() {
