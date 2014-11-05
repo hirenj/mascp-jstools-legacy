@@ -4359,12 +4359,19 @@ MASCP.GenomeReader.prototype.calculatePositionForSequence = function(idx,pos) {
                 }
 
                 var exons = cd.exons;
-                var color = (idx == 0) ? '#000' : '#f99';
+                var color = (idx == 0) ? '#999' : '#f99';
                 exons.forEach(function(exon) {
-                    return_data.push({ "aa": 1+exon[0], "type" : "box" , "width" : exon[1] - exon[0], "options" : { "offset" : base_offset, "height_scale" : 0.3, "fill" : color, "merge" : false  }});
+                    return_data.push({ "aa": 1+exon[0], "type" : "box" , "width" : exon[1] - exon[0], "options" : { "offset" : base_offset, "height_scale" : 1, "fill" : color, "merge" : false  }});
+                    if (cd.strand  > 0) {
+                        return_data.push({ "aa": exon[1] - 1, "type" : "marker", "options" : { "height" : 4, "content" : {"type" : "right_triangle", "fill" : '#aaa' }, "offset" : base_offset+2, "bare_element" : true }});
+                    } else {
+                        return_data.push({ "aa": exon[0] + 1, "type" : "marker", "options" : { "height" : 4, "content" : {"type" : "left_triangle", "fill" : '#aaa' }, "offset" : base_offset+2, "bare_element" : true }});
+                    }
                 });
-                return_data.push({"aa" : cd.cdsstart, "type" : "box" , "width" : 0.5, "options" : { "fill" : "#0000ff", "height_scale" : 0.3, "offset" : base_offset , "merge" : false } });
+                return_data.push({"aa" : cd.cdsstart, "type" : "box" , "width" : 1, "options" : { "fill" : "#0000ff", "height_scale" : 2, "offset" : base_offset - 2 , "merge" : false } });
+                return_data.push({"aa" : cd.cdsend, "type" : "box" , "width" : 1, "options" : { "fill" : "#0000ff", "height_scale" : 2, "offset" : base_offset  - 2, "merge" : false } });
                 base_offset += 1;
+
             });
             base_offset += 2;
         });
@@ -4511,7 +4518,7 @@ MASCP.GenomeReader.prototype.calculatePositionForSequence = function(idx,pos) {
             if ( ! sequence_index ) {
                 sequence_index = 0;
             }
-            MASCP.registerLayer(controller_name, { 'fullname' : 'CDS', 'color' : '#000000' });
+            MASCP.registerLayer(controller_name, { 'fullname' : 'Exons', 'color' : '#000000' });
             MASCP.getLayer(controller_name).genomic = true;
 
             if (renderer.trackOrder.indexOf(controller_name) < 0) {
@@ -15657,6 +15664,13 @@ MASCP.CondensedSequenceRenderer.prototype.renderObjects = function(track,objects
                 if (content.type == "circle") {
                     content_el = renderer._canvas.circle(-0.5,-0.5,1,1);
                 }
+                if (content.type == "left_triangle") {
+                    content_el = renderer._canvas.poly('-100,0 0,-100 0,100');
+                }
+                if (content.type == "right_triangle") {
+                    content_el = renderer._canvas.poly('0,100 100,0 0,-100');
+                }
+
                 ["fill","stroke","stroke-width","fill-opacity","stroke-opacity"].forEach(function(prop) {
                     if (content[prop]) {
                         content_el.setAttribute(prop,content[prop]);
