@@ -308,6 +308,10 @@ MASCP.cloneService = function(service,name) {
             reader.setData(set,pref.data);
             return;
         }
+        if ( pref.type == "reader" ) {
+            callback.call(null,null,pref,pref.reader);
+            return;
+        }
 
         // If we wish to load complete datasets
         // and store them browser-side, we need
@@ -1027,7 +1031,7 @@ base.retrieve = function(agi,callback)
                     if (cback) {
                         self.result = null;
                         var done_func = function(err) {
-                            bean.remove(self,"resultRecieved",arguments.callee);
+                            bean.remove(self,"resultReceived",arguments.callee);
                             bean.remove(self,"error",arguments.callee);
                             cback.call(self,err);
                         };
@@ -2044,6 +2048,18 @@ MASCP.Service.prototype.registerSequenceRenderer = function(sequenceRenderer,opt
     sequenceRenderer.trigger('readerRegistered',[this]);
     return this;
 };
+
+MASCP.Service.prototype.resetOnResult = function(sequenceRenderer,rendered,track) {
+    var self = this;
+    var clear_func = function() {
+        self.unbind('resultReceived',clear_func);
+        rendered.forEach(function(obj) {
+            sequenceRenderer.remove(track,obj);
+        });
+    };
+    this.bind('resultReceived',clear_func);
+};
+
 
 /**
  * For this service, set up a sequence renderer so that the events are connected up with receiving data.
@@ -9320,8 +9336,7 @@ if (typeof document !== 'undefined' && 'registerElement' in document) {
       if (pref.type == 'liveClass') {
         reader.registerSequenceRenderer(renderer,pref.render_options || {} );
       }
-
-      reader.retrieve(acc,function() {
+      var render_func = function() {
         if ( ! this.result ) {
           return;
         }
@@ -9369,7 +9384,8 @@ if (typeof document !== 'undefined' && 'registerElement' in document) {
                                   obj.options = { "offset" : offset };
                                 }
                               });
-                              renderer.renderObjects(track_name,r);
+                              var objs = renderer.renderObjects(track_name,r);
+                              reader.resetOnResult(renderer,objs,track_name);
                               renderer.trigger('resultsRendered',[this]);
                               renderer.refresh();
                             }, "agi" : acc });
@@ -9381,7 +9397,9 @@ if (typeof document !== 'undefined' && 'registerElement' in document) {
           })(null,pref.render_options['renderer']);
           return;
         }
-      });
+      };
+      reader.bind('resultReceived',render_func);
+      reader.retrieve(acc);
     };
     var gatorReaderProto = null;
     var gatorReader = (function() {
@@ -9491,19 +9509,67 @@ if (typeof document !== 'undefined' && 'registerElement' in document) {
     var localReader = (function() {
       var proto = Object.create( gatorReaderProto,{
         'type' : {
-          get: function() { return "data" }
+          get: function() { return "reader"; }
         },
         'config_id' : {
-          get: function() { return "local-"+((new Date()).getTime()); }
+          get: function() { return this._config_id; }
+        },
+        'data' : {
+          get: function() { return this._data; },
+          set: function(data) {
+            this._data = data;
+            this.dataChanged();
+          }
         }
       });
 
+      var create_reader = function() {
+            var reader = new MASCP.UserdataReader();
+            var self = this;
+            reader.map = function(data) {
+                var results = {};
+                for (var key in data) {
+                    if (key == "retrieved" || key == "title") {
+                        continue;
+                    }
+                    if ( ! data[key].data ) {
+                        results[key] = {'data' : data[key]};
+                    } else {
+                        results[key] = data;
+                    }
+                    results[key].retrieved = data.retrieved;
+                    results[key].title = data.title;
+
+                }
+                return results;
+            };
+            reader.datasetname = this.config_id;
+            reader.setData(this.config_id,this.data);
+            return reader;
+      };
+
+      proto.dataChanged = function() {
+        if (this._reader) {
+          this._reader.bind('ready',function() {
+            this.unbind('ready',arguments.callee);
+            if (this.agi) {
+              this.retrieve(this.agi);
+            }
+          });
+          this._reader.setData(this._reader.datasetname,this.data);
+        }
+      };
+
       proto.createdCallback = function() {
         var self = this;
-        if (this.getAttribute('data')) {
-          // this.data = JSON.parse(this.getAttribute('data'));
-        }
+        this._config_id = "local-"+((new Date()).getTime());
         gatorReaderProto.createdCallback.apply(this);
+        this._reader = create_reader.call(this);
+      };
+      proto._generateConfig = function() {
+        var config = gatorReaderProto._generateConfig.call(this);
+        config[this._config_id].reader = this._reader;
+        return config;
       };
 
       proto.attributeChangedCallback = function(attrName, oldVal, newVal) {
@@ -9576,7 +9642,13 @@ if (typeof document !== 'undefined' && 'registerElement' in document) {
 
       proto.go = function() {
         var self = this;
-        var config = this.readers.reduce(function(result,reader) { var confblock = reader.configuration; for(var key in confblock) { result[key] = confblock[key] }; return result; },{});
+        var config = this.readers.reduce(function(result,reader) {
+          var confblock = reader.configuration;
+          for(var key in confblock) {
+            result[key] = confblock[key];
+          }
+          return result;
+        },{});
         MASCP.IterateServicesFromConfig(config,function(err,pref,reader) {
           iterate_readers(err,pref,reader,self.parentNode.accession,self.parentNode.renderer);
         });
