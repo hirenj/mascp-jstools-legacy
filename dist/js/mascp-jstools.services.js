@@ -2814,6 +2814,332 @@ MASCP.CddRunner.prototype.requestData = function()
     
 })(MASCP.CddRunner);
 
+
+if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
+    throw "MASCP.Service is not defined, required class";
+}
+
+(function() {
+
+  MASCP.EditableReader = MASCP.buildService(function(data) {
+    this._raw_data = data;
+    return this;
+  });
+
+  MASCP.EditableReader.prototype.retrieve = function() {
+    bean.fire(this,'resultReceived');
+  };
+
+  var mousePosition = function(evt) {
+      var posx = 0;
+      var posy = 0;
+      if (!evt) {
+          evt = window.event;
+      }
+
+      if (evt.pageX || evt.pageY)     {
+          posx = evt.pageX - (document.body.scrollLeft + document.documentElement.scrollLeft);
+          posy = evt.pageY - (document.body.scrollTop + document.documentElement.scrollTop);
+      } else if (evt.clientX || evt.clientY)  {
+          posx = evt.clientX + document.body.scrollLeft + document.documentElement.scrollLeft;
+          posy = evt.clientY + document.body.scrollTop + document.documentElement.scrollTop;
+      }
+      if (self.targetElement) {
+          posx = evt.screenX;
+          posy = evt.screenY;
+      }
+      return [ posx, posy ];
+  };
+
+  var svgPosition = function(ev,svgel) {
+      var positions = mousePosition(ev.changedTouches ? ev.changedTouches[0] : ev);
+      var p = {};
+      if (svgel.nodeName == 'svg') {
+          p = svgel.createSVGPoint();
+          var rootCTM = svgel.getScreenCTM();
+          p.x = positions[0];
+          p.y = positions[1];
+
+          self.matrix = rootCTM.inverse();
+          p = p.matrixTransform(self.matrix);
+      } else {
+          p.x = positions[0];
+          p.y = positions[1];
+      }
+      return p;
+  };
+
+  var bindClick = function(element,handler) {
+    if ("ontouchstart" in window) {
+      element.addEventListener('touchstart',function(ev) {
+        var startX = ev.touches[0].clientX;
+        var startY = ev.touches[0].clientY;
+        var reset = function() {
+          document.body.removeEventListener('touchmove',move);
+          element.removeEventListener('touchend',end);
+        };
+        var end = function(ev) {
+          reset();
+          ev.stopPropagation();
+          ev.preventDefault();
+          if (handler) {
+            handler.call(null,ev);
+          }
+        };
+        var move = function(ev) {
+          if (Math.abs(ev.touches[0].clientX - startX) > 10 || Math.abs(ev.touches[0].clientY - startY) > 10) {
+            reset();
+          }
+        };
+        document.body.addEventListener('touchmove', move , false);
+        element.addEventListener('touchend',end,false);
+      },false);
+    } else {
+      element.addEventListener('click',handler,false);
+    }
+  };
+
+  var color_content = function(self,annotation,color) {
+    return {'symbol' : "url('"+color+"')", "hover_function" : function() { annotation.color = "url('"+color+"')"; } };
+  };
+
+  var icon_content = function(self,annotation,symbol) {
+    return { 'symbol' : symbol, "hover_function" : function() { annotation.icon = symbol; }  };
+  };
+
+  var tag_content = function(self,annotation,tag) {
+    return { 'text' : tag.name, "hover_function" : function() { annotation.color = null; annotation.tag = tag.id; }  };
+  };
+
+  var trash_content = function(self,annotation) {
+    return { 'symbol' :  '/icons.svg#trash', 'text_alt' : 'Delete', "select_function" : function() { self.demoteAnnotation('self',annotation); } };
+  };
+
+  MASCP.EditableReader.prototype.generatePieContent = function(type,annotation,vals) {
+    var self = this;
+    var contents = [];
+    vals.forEach(function(val) {
+      contents.push(type.call(null,self,annotation,val));
+    });
+    if (type == tag_content || type == color_content) {
+      contents.push({'symbol' : "/icons.svg#prefs", 'text_alt' : 'Prefs', "select_function" : function() { bean.fire(self,'editclick'); } });
+    }
+    contents.push(trash_content(self,annotation));
+    return contents;
+  };
+
+  MASCP.EditableReader.prototype.pieMaker = function(annotation) {
+    var self = this;
+    return function(set_col,ev) {
+      if ( ! ev ) {
+        ev = set_col;
+        set_col = null;
+      }
+      ev.preventDefault();
+      ev.stopPropagation();
+      if (annotation.pie) {
+        return;
+      }
+      var canvas = self.renderer._canvas;
+      var pie_contents;
+      if ( ! set_col ) {
+        if (annotation.type == 'symbol') {
+          pie_contents = self.generatePieContent(icon_content,annotation,["#sugar_galnac","#sugar_man","#sugar_xyl","#sugar_fuc","#sugar_glcnac","#sugar_glcnac(b1-4)glcnac"]);
+        } else {
+          var tags = [];
+          for (var tag in self.tags) {
+            tags.push(self.tags[tag]);
+          }
+          pie_contents = self.generatePieContent(tag_content,annotation,tags);
+        }
+      } else {
+        pie_contents = self.generatePieContent(color_content,annotation,["#grad_green","#grad_blue","#grad_yellow","#grad_red","#grad_pink"]);
+      }
+      var click_point = svgPosition(ev,canvas);
+      var pie = PieMenu.create(canvas,click_point.x/canvas.RS,click_point.y/canvas.RS,pie_contents,{ "size" : 7, "ellipse" : true });
+      annotation.pie = pie;
+      var end_pie = function(ev) {
+        canvas.removeEventListener('mouseout',end_pie);
+        canvas.removeEventListener('mouseup',end_pie);
+        if (annotation.pie) {
+          annotation.pie.destroy();
+          delete annotation.pie;
+        }
+      };
+      annotation.pie.end = end_pie;
+      canvas.addEventListener('mouseup',end_pie,false);
+
+    };
+  };
+
+  MASCP.EditableReader.prototype.setupSequenceRenderer = function(renderer,options) {
+    var self = this;
+    self.bind('resultReceived',function() {
+      self.acc = self.agi;
+      self.redrawAnnotations(self.acc,options.track);
+    });
+  };
+
+
+  MASCP.EditableReader.prototype.renderAnnotation = function(annotation,top_offset) {
+    var self = this;
+    var rendered = [];
+    var click_el = null;
+    var tag_el = null;
+    top_offset = (top_offset || 0)*8;
+
+    var obj = { "gotResult" : function() {
+      if (annotation.type == "symbol") {
+        var added = self.renderer.getAA(annotation.index).addToLayer("annotations"+annotation.acc,{"content" : annotation.icon ? annotation.icon : "X" , "bare_element" : (annotation.icon && (! ("ontouchstart" in window))) ? true : false, "border" : "#f00", "offset" : 6 + top_offset, "height" : 12 });
+        rendered.push(added[0]);
+        rendered.push(added[2]);
+        rendered.push(added[1]);
+        click_el = added[1];
+      } else {
+
+        var added = [];
+        click_el = self.renderer.getAA(annotation.index).addShapeOverlay("annotations"+annotation.acc,annotation.length,{"shape" : "rectangle","height" : 4, "offset" : 0 + top_offset });
+        added.push(click_el);
+
+        if (annotation.tag && self.renderer.zoom > 3.5) {
+          tag_el = self.renderer._canvas.text_circle(0.5,0.5,1,(self.tags[annotation.tag] || {"name" : annotation.tag }).name,{"stretch" : "right", "fill" : "#000", "weight" : "normal"});
+          tag_el.setAttribute('opacity','0.8');
+          added = added.concat(self.renderer.getAA(annotation.index+Math.floor(0.5*annotation.length)).addToLayer("annotations"+annotation.acc,
+            { "content" : tag_el,
+              "bare_element" : true,
+              "no_tracer" : true,
+              "offset" : 7.5 + top_offset,
+              "height" : 15}
+              ));
+          rendered.push(added[2]);
+          added[2].container.removeAttribute('viewBox');
+          added[2].container.setAttribute('width','100%');
+          added[2].container.setAttribute('height','100%');
+          added[2].zoom_level = 'text';
+          label_el = added[2];
+          rendered.push(added[0]);
+        } else {
+          rendered.push(added[0]);
+        }
+        added = [];
+
+        if (annotation.tag && self.tags[annotation.tag]) {
+          click_el.setAttribute('fill',self.tags[annotation.tag].color);
+        }
+
+        if (annotation.color) {
+          click_el.setAttribute('fill',annotation.color);
+        }
+
+      }
+    }, "agi" : annotation.acc };
+    self.renderer.trigger('readerRegistered',[obj]);
+    obj.gotResult();
+    return { "rendered" : rendered, "click_element" : click_el, "tag_element" : tag_el };
+  };
+
+  MASCP.EditableReader.prototype.intervalSortAnnotations = function(type) {
+    var self = this;
+    var annos = self.annotations[type];
+    var intervals = [];
+    annos.forEach(function(annotation) {
+      var start;
+      var end;
+      start = annotation.index;
+      end = annotation.index + annotation.length;
+      intervals.push({ "index" : start, "start" : true,  "annotation" : annotation });
+      intervals.push({ "index" : end, "start" : false , "annotation" : annotation });
+    });
+    intervals.sort(function(a,b) {
+      var sameAcc = (a.annotation.acc || "").localeCompare(b.annotation.acc);
+      if (sameAcc !== 0) {
+        return sameAcc;
+      }
+
+      if (a.index < b.index ) {
+        return -1;
+      }
+      if (a.index > b.index ) {
+        return 1;
+      }
+      if (a.index == b.index) {
+        return a.start ? -1 : 1;
+      }
+    });
+    return intervals;
+  };
+
+  MASCP.EditableReader.prototype.redrawAnnotations = function(acc,track) {
+    var self = this;
+    var wanted_accs = [acc];
+
+    for (var annotation_type in self.annotations) {
+      var current = [];
+      self.intervalSortAnnotations(annotation_type).forEach(function(interval) {
+        var annotation = interval.annotation;
+        if (wanted_accs.indexOf(annotation.acc) < 0 ) {
+          return;
+        }
+        if ( MASCP.getLayer(track) && MASCP.getLayer(track).disabled ) {
+          return;
+        }
+        if (annotation.deleted) {
+          return;
+        }
+
+        if (! interval.start) {
+          current.splice(current.indexOf(annotation),1,null);
+          while (current.length > 0 && current[current.length - 1] == null) {
+            current.splice(current.length - 1,1);
+          }
+          return;
+        }
+
+        var click_el = null;
+        var label_el = null;
+        var drawn = self.renderAnnotation(annotation,track,(annotation.class == "potential") ? -1 : (current.length));
+
+        current.push(annotation);
+        click_el = drawn['click_element'];
+        label_el = drawn['tag_element'];
+        rendered = rendered.concat(drawn['rendered']);
+
+        if (annotation.class == "potential") {
+          click_el.style.opacity = '0.5';
+          if (! self.readonly) {
+            self.bindClick(click_el,function() {
+              delete annotation.class;
+              self.promoteAnnotation('self',annotation);
+              // self.redrawAnnotations(annotation.acc);
+              self.renderer.select();
+            });
+          }
+        } else {
+
+          if ( ! self.readonly ) {
+            if (label_el) {
+              label_el.addEventListener('click',function(ev) { ev.preventDefault(); ev.stopPropagation(); });
+              label_el.addEventListener('mousedown',function(ev) {  self.pieMaker(annotation).call(label_el,true,ev); },false);
+              label_el.addEventListener('touchstart',function(ev) {  self.pieMaker(annotation).call(label_el,true,ev); },false);
+              label_el.addEventListener('touchend',function(ev) {  if (annotation && annotation.pie) { annotation.pie.end(); delete annotation.pie; } ev.preventDefault(); },false);
+
+            }
+            click_el.addEventListener('click',function(ev) { ev.preventDefault(); ev.stopPropagation(); });
+            click_el.addEventListener('mousedown',self.pieMaker(annotation),false);
+            click_el.addEventListener('touchstart',self.pieMaker(annotation),false);
+            click_el.addEventListener('touchend',function(ev) { if (annotation && annotation.pie) { annotation.pie.end(); delete annotation.pie; } ev.preventDefault(); },false);
+          }
+        }
+      });
+    }
+    if (self.renderer.trackOrder.indexOf(track) < 0) {
+      self.renderer.trackOrder.push(track);
+    }
+    self.renderer.showLayer(track);
+    self.renderer.refresh();
+  };
+
+})();
 /*
 http://uniprot.org/mapping/?from=ACC+ID&to=REFSEQ_NT_ID&format=list&query=Q9UNA3
  */
@@ -3259,13 +3585,17 @@ var get_file_by_filename = function(filename,mime,callback) {
         }
 
         if (err) {
-            callback.call(null,err);
+            if (callback) {
+                callback.call(null,err);
+            }
             return;
         }
 
         if (data.items.length == 0) {
             cached_files[filename] = {};
-            callback.call(null,null,cached_files[filename]);
+            if (callback) {
+                callback.call(null,null,cached_files[filename]);
+            }
             return;
         }
 
