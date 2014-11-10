@@ -614,7 +614,8 @@ MASCP.cloneService = function(service,name) {
             reader.datasetname = pref.title;
             reader.requestData = function() {
                 var agi = this.agi.toLowerCase();
-                var gatorURL = set.slice(-1) == '/' ? set+agi : set+'/'+agi;
+                var urlpart = set.split('#')[0];
+                var gatorURL = urlpart.slice(-1) == '/' ? urlpart+agi : urlpart+'/'+agi;
                 return {
                     type: "GET",
                     dataType: "json",
@@ -5144,7 +5145,8 @@ var get_file_by_filename = function(filename,mime,callback) {
         callback.call(null,null,cached_files[filename]);
         return;
     }
-    var query = encodeURIComponent("title='"+filename+"' and 'appdata' in parents and mimeType = '"+mime+"' and trashed = false");
+    var query = encodeURIComponent("title='"+filename+"' and 'appfolder' in parents");
+    //# and mimeType = '"+mime+"' and trashed = false");
     do_request("www.googleapis.com","/drive/v2/files?q="+query,null,function(err,data) {
 
         if (cached_files[filename] && callback) {
@@ -5157,13 +5159,17 @@ var get_file_by_filename = function(filename,mime,callback) {
         }
 
         if (err) {
-            callback.call(null,err);
+            if (callback) {
+                callback.call(null,err);
+            }
             return;
         }
 
         if (data.items.length == 0) {
             cached_files[filename] = {};
-            callback.call(null,null,cached_files[filename]);
+            if (callback) {
+                callback.call(null,null,cached_files[filename]);
+            }
             return;
         }
 
