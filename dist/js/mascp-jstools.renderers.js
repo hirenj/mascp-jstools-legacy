@@ -6898,8 +6898,7 @@ MASCP.CondensedSequenceRenderer.Navigation = (function() {
 
         var clipping = document.createElementNS(svgns,'clipPath');
         clipping.id = 'nav_clipping';
-        var rect2 = document.createElementNS(svgns,'use');
-        rect2.setAttributeNS('http://www.w3.org/1999/xlink','href','#nav_back');
+        var rect2 = rect.cloneNode();
     
         back_canvas.insertBefore(clipping,back_canvas.firstChild);
         clipping.appendChild(rect2);
@@ -7007,6 +7006,9 @@ MASCP.CondensedSequenceRenderer.Navigation = (function() {
             close_group.setAttribute('transform','scale('+zoom+','+zoom+') ');
             rect.setAttribute('transform','scale('+zoom+',1) ');
             rect.setAttribute('ry', (zoom*base_rounded_corner[1]).toString());
+            rect2.setAttribute('transform','scale('+zoom+',1) ');
+            rect2.setAttribute('ry', (zoom*base_rounded_corner[1]).toString());
+
             self.refresh();
         };
 
