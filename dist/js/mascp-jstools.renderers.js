@@ -3674,8 +3674,8 @@ var SVGCanvas = SVGCanvas || (function() {
                 var needs_stretch = opts.stretch;
                 symbol.forEach(function(symb,i) {
                     var new_el;
-                    var x_pos = r + (r*symbol.length * Math.cos(i*phase - 0*Math.PI/2));
-                    var y_pos = 0 + (r*symbol.length * Math.sin(i*phase - 0*Math.PI/2));
+                    var x_pos = 1.2*r + (r*symbol.length * Math.cos(i*phase - 0*Math.PI/2));
+                    var y_pos = r + (r*(4*r/symbol.length)*symbol.length * Math.sin(i*phase - 0*Math.PI/2));
 
                     var rotate_amount = 180*i/symbol.length;
                     rotate_amount -= 0*90;
@@ -3686,7 +3686,12 @@ var SVGCanvas = SVGCanvas || (function() {
                             opts.stretch = 'left';
                         }
                         if ((rotate_amount % 90) == 0 && rotate_amount != 90 && rotate_amount != -90) {
-                            opts.stretch = true;
+                            if (rotate_amount == 0) {
+                                opts.stretch = 'right';
+                            }
+                            if (symbol.length == 1) {
+                                opts.stretch = true;
+                            }
                         }
 
                     }
@@ -7676,8 +7681,8 @@ MASCP.CondensedSequenceRenderer.Navigation = (function() {
                 self.refresh();
             } else {
                 self.demote();
-
-                close_group._button.setAttribute('filter','url(#drop_shadow)');
+                // Chrome bug Jan 2015 with the drop shadow
+                //close_group._button.setAttribute('filter','url(#drop_shadow)');
                 close_group.setAttribute('style',needs_transition+transform_origin_statement+translate(-0.75*self.nav_width_base,"405deg"));
                 if ("ontouchend" in window || window.getComputedStyle(close_group).getPropertyValue("-ms-transform")) {
                     close_transform = close_group.getAttribute('transform') || ' ';
