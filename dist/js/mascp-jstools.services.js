@@ -3710,6 +3710,7 @@ if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
     self.bind('resultReceived',function() {
       self.acc = self.agi;
       self.renderer = renderer;
+      self.renderer.emptyTrack(MASCP.getLayer(options.track));
       self.redrawAnnotations(self.acc,options.track);
       if (renderer._canvas) {
         setup_mouse_events.call(self,renderer._canvas);
@@ -3719,6 +3720,7 @@ if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
       });
     });
   };
+
   MASCP.EditableReader.prototype.getAnnotation = function(id) {
     for (var type in this.annotations) {
       var annos = this.annotations[type].filter(function(anno) { return anno.id === id; });
@@ -3824,7 +3826,9 @@ if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
   MASCP.EditableReader.prototype.redrawAnnotations = function(acc,track) {
     var self = this;
     var wanted_accs = [acc];
-
+    if ( ! track ) {
+      return;
+    }
     for (var annotation_type in self.annotations) {
       var current = [];
       var to_draw = [];
@@ -3857,7 +3861,6 @@ if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
 
         current.push(annotation);
       });
-
       var obj = { "gotResult" : function() {
         self.renderer.renderObjects(track,to_draw);
       }, "agi" : acc };
