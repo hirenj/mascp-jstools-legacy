@@ -5701,7 +5701,7 @@ if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
   };
 
   var trash_content = function(self,annotation) {
-    return { 'symbol' :  '/icons.svg#trash', 'text_alt' : 'Delete', "select_function" : function() { self.demoteAnnotation('self',annotation); } };
+    return { 'symbol' :  '#icon_trash', 'text_alt' : 'Delete', "select_function" : function() { self.demoteAnnotation('self',annotation); } };
   };
 
   MASCP.EditableReader.prototype.generatePieContent = function(type,annotation,vals) {
@@ -5711,7 +5711,7 @@ if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
       contents.push(type.call(null,self,annotation,val));
     });
     if (type == tag_content || type == color_content) {
-      contents.push({'symbol' : "/icons.svg#prefs", 'text_alt' : 'Prefs', "select_function" : function() { bean.fire(self,'editclick'); } });
+      contents.push({'symbol' : "#icon_prefs", 'text_alt' : 'Prefs', "select_function" : function() { bean.fire(self,'editclick'); } });
     }
     contents.push(trash_content(self,annotation));
     return contents;
@@ -18725,6 +18725,191 @@ MASCP.CondensedSequenceRenderer.prototype.EnableHighlights = function() {
     };
 };
 
+(function() {
+
+    var bindClick = function(element,handler) {
+        if ("ontouchstart" in window) {
+            element.addEventListener('touchstart',function(ev) {
+                var startX = ev.touches[0].clientX;
+                var startY = ev.touches[0].clientY;
+                var reset = function() {
+                    document.body.removeEventListener('touchmove',move);
+                    element.removeEventListener('touchend',end);
+                };
+                var end = function(ev) {
+                    reset();
+                    ev.stopPropagation();
+                    ev.preventDefault();
+                    if (handler) {
+                        handler.call(null,ev);
+                    }
+                };
+                var move = function(ev) {
+                    if (Math.abs(ev.touches[0].clientX - startX) > 10 || Math.abs(ev.touches[0].clientY - startY) > 10) {
+                        reset();
+                    }
+                };
+                document.body.addEventListener('touchmove', move , false);
+                element.addEventListener('touchend',end,false);
+            },false);
+        } else {
+            element.addEventListener('click',handler,false);
+        }
+    };
+
+
+  var mousePosition = function(evt) {
+      var posx = 0;
+      var posy = 0;
+      if (!evt) {
+          evt = window.event;
+      }
+
+      if (evt.pageX || evt.pageY)     {
+          posx = evt.pageX - (document.body.scrollLeft + document.documentElement.scrollLeft);
+          posy = evt.pageY - (document.body.scrollTop + document.documentElement.scrollTop);
+      } else if (evt.clientX || evt.clientY)  {
+          posx = evt.clientX + document.body.scrollLeft + document.documentElement.scrollLeft;
+          posy = evt.clientY + document.body.scrollTop + document.documentElement.scrollTop;
+      }
+      if (self.targetElement) {
+          posx = evt.screenX;
+          posy = evt.screenY;
+      }
+      return [ posx, posy ];
+  };
+
+  var svgPosition = function(ev,svgel) {
+      var positions = mousePosition(ev.changedTouches ? ev.changedTouches[0] : ev);
+      var p = {};
+      if (svgel.nodeName == 'svg') {
+          p = svgel.createSVGPoint();
+          var rootCTM = svgel.getScreenCTM();
+          p.x = positions[0];
+          p.y = positions[1];
+
+          self.matrix = rootCTM.inverse();
+          p = p.matrixTransform(self.matrix);
+      } else {
+          p.x = positions[0];
+          p.y = positions[1];
+      }
+      return p;
+  };
+
+MASCP.CondensedSequenceRenderer.prototype.enableSelection = function(callback) {
+    var self = this;
+
+    if ( ! self._canvas) {
+      bean.add(self,'sequenceChange',function() {
+        self.enableSelection();
+      });
+      return;
+    }
+
+    var canvas = self._canvas;
+    var start;
+    var end;
+    var end_func;
+    var selected;
+
+    var moving_func = function(evt) {
+        evt.preventDefault();
+
+        var p = svgPosition(evt,canvas);
+        end = p.x;
+
+        var local_start;
+        var local_end;
+        if (start > end) {
+            local_end = parseInt(start / 50);
+            local_start = parseInt(end / 50);
+        } else {
+            local_end = parseInt(end/50);
+            local_start = parseInt(start/50);
+        }
+        console.log(local_start + " " +local_end);
+        self.select(local_start+1,local_end);
+        selected = (self.sequence.substr(local_start, local_end - local_start ));
+    };
+
+
+    bindClick(canvas,function(evt) {
+        if (! self.selecting) {
+            self.select();
+        }
+    });
+
+    canvas.addEventListener('mousedown',function(evt) {
+        if (! self.selecting ) {
+            return;
+        }
+        var positions = mousePosition(evt);
+        var p = {};
+        if (canvas.nodeName == 'svg') {
+                p = canvas.createSVGPoint();
+                var rootCTM = this.getScreenCTM();
+                p.x = positions[0];
+                p.y = positions[1];
+
+                self.matrix = rootCTM.inverse();
+                p = p.matrixTransform(self.matrix);
+        } else {
+                p.x = positions[0];
+                p.y = positions[1];
+        }
+        start = p.x;
+        end = p.x;
+        canvas.addEventListener('mousemove',moving_func,false);
+        evt.preventDefault();
+    },false);
+
+    canvas.addEventListener('mouseup',function(evt) {
+        if (self.selecting) {
+            // callback(selected);
+        }
+        canvas.removeEventListener('mousemove',moving_func);
+        evt.preventDefault();
+    });
+
+    canvas.addEventListener('touchend',function() {
+        if (self.selecting) {
+            // setTimeout(function() {
+            //     callback(selected);
+            // },500);
+        }
+        canvas.removeEventListener('touchmove',moving_func);
+    });
+
+    canvas.addEventListener('touchstart',function(evt) {
+        if (! self.selecting ) {
+            return;
+        }
+        if (evt.changedTouches.length == 1) {
+            evt.preventDefault();
+            var positions = mousePosition(evt.changedTouches[0]);
+            var p = {};
+            if (canvas.nodeName == 'svg') {
+                    p = canvas.createSVGPoint();
+                    var rootCTM = this.getScreenCTM();
+                    p.x = positions[0];
+                    p.y = positions[1];
+
+                    self.matrix = rootCTM.inverse();
+                    p = p.matrixTransform(self.matrix);
+            } else {
+                    p.x = positions[0];
+                    p.y = positions[1];
+            }
+            start = p.x;
+            end = p.x;
+            canvas.addEventListener('touchmove',moving_func,false);
+        }
+    },false);
+};
+
+})();
+
 /*
  * Get a canvas set of the visible tracers on this renderer
  */
@@ -20761,6 +20946,12 @@ if (typeof document !== 'undefined' && 'registerElement' in document) {
           get: function() { if (self.getAttribute('interactive')) { return true } else { return false }},
           set: function(val) { is_interactive.enabled = val }
         });
+
+        Object.defineProperty(this.renderer,"selecting",{
+          get: function() { return ! dragger.enabled; },
+          set: function(val) { dragger.enabled = ! val; return val; }
+        });
+
 
         var is_interactive = {'enabled' : self.interactive };
         var observer = new MutationObserver(function() {
