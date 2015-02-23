@@ -5998,13 +5998,12 @@ MASCP.CondensedSequenceRenderer.prototype.renderObjects = function(track,objects
         if (object.identifier) {
             rendered.setAttribute('identifier',object.identifier);
         }
-        if ((object.options || {}).events ) {
+        if ((object.options || {}).events && rendered ) {
             object.options.events.forEach(function(ev) {
                 (ev.type || "").split(",").forEach(function(evtype) {
-                    if (evtype == 'click') {
+                    if (evtype == 'click' && rendered.style ) {
                         rendered.style.cursor = 'pointer';
                     }
-
                     rendered.addEventListener(evtype,function(e) {
                         e.event_data = ev.data;
                         e.layer = track;
@@ -6564,13 +6563,16 @@ MASCP.CondensedSequenceRenderer.prototype.enableSelection = function(callback) {
         self.select(local_start+1,local_end);
     };
 
-
-    bindClick(canvas,function(evt) {
-        if (! self.selecting) {
-            self.select();
-            notifySelectionToLayers(null,null,self);
-        }
-    });
+    // Do not send the click event to the canvas
+    // this screws up with doing things on the selection
+    // Need alternative method to clear selection
+    //
+    // bindClick(canvas,function(evt) {
+    //     if (! self.selecting) {
+    //         self.select();
+    //         notifySelectionToLayers(null,null,self);
+    //     }
+    // });
 
     canvas.addEventListener('mousedown',function(evt) {
         if (! self.selecting ) {

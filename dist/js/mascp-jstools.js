@@ -5648,8 +5648,10 @@ if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
     var self = this;
     if (ev.event_data && ev.event_data.annotationid) {
       var annotation = self.getAnnotation(ev.event_data.annotationid);
-      self.pieMaker(self.getAnnotation(ev.event_data.annotationid)).call(ev.target,annotation.type !== 'symbol',ev);
-      this.renderer._canvas.addEventListener('mousemove',mouse_move,true);
+      if (annotation) {
+        self.pieMaker(self.getAnnotation(ev.event_data.annotationid)).call(ev.target,annotation.type !== 'symbol',ev);
+        this.renderer._canvas.addEventListener('mousemove',mouse_move,true);
+      }
     }
   };
   var mouse_move = function(ev) {
@@ -5659,17 +5661,16 @@ if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
 
   var mouse_click = function(ev) {
     var self = this;
-    if (ev.event_data && ev.event_data.annotationid) {
-      var annotation = self.getAnnotation(ev.event_data.annotationid);
-      if (annotation.class == "potential") {
-        delete annotation.class;
-        self.promoteAnnotation('self',annotation);
-        self.renderer.select();
-      } else {
-        ev.preventDefault();
-        ev.stopPropagation();
-      }
+    if (ev.event_data && ev.event_data.annotationid && ev.event_data.annotationid === "potential") {
+      var anno = self.potential_annos[0];
+      self.potential_annos = [];
+      anno.id = (new Date()).getTime();
+      delete anno.class;
+      self.annotations.push( anno );
     }
+    ev.preventDefault();
+    ev.stopPropagation();
+
   };
 
   var touch_end = function(ev) {
@@ -5782,6 +5783,16 @@ if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
     var self = this;
     var empty_track = function() {
     };
+    bean.add(MASCP.getLayer(options.track),'selection', function(start,end) {
+      self.potential_annos = [ { 'id' : 'potential', 'type' : 'box', 'acc' : self.acc, "length": Math.abs(start-end) ,"index" : start, "class" : "potential" } ];
+      bean.fire(self,'resultReceived');
+    });
+    if (renderer._canvas) {
+      setup_mouse_events.call(self,renderer._canvas);
+    }
+    renderer.bind('sequenceChange',function() {
+      setup_mouse_events.call(self,this._canvas);
+    });
 
     self.bind('resultReceived',function() {
       self.acc = self.acc || self.agi;
@@ -5790,12 +5801,6 @@ if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
 
       empty_track = generate_empty_function(self.redrawAnnotations(self.acc,options.track), options.track );
 
-      if (renderer._canvas) {
-        setup_mouse_events.call(self,renderer._canvas);
-      }
-      renderer.bind('sequenceChange',function() {
-        setup_mouse_events.call(self,this._canvas);
-      });
     });
   };
   if (Object.defineProperty) {
@@ -5829,8 +5834,14 @@ if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
     if (! self._annotations ) {
       self._annotations = [];
     }
+    if (! self.potential_annos) {
+      self.potential_annos = [];
+    }
 
-    var new_annotation = function() {
+    var new_annotation = function(added,removed) {
+      if ((added && added.pie) || (removed && ("pie" in removed) )) {
+        return;
+      }
       bean.fire(self,'resultReceived');
     };
 
@@ -5962,6 +5973,15 @@ if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
         return a.start ? -1 : 1;
       }
     });
+    (self.potential_annos || []).forEach(function(annotation) {
+      var start;
+      var end;
+      start = annotation.index;
+      end = annotation.index + (annotation.length || 1);
+      intervals.unshift({ "index" : end, "start" : false , "annotation" : annotation });
+      intervals.unshift({ "index" : start, "start" : true,  "annotation" : annotation });
+    });
+
     return intervals;
   };
 
@@ -18396,13 +18416,12 @@ MASCP.CondensedSequenceRenderer.prototype.renderObjects = function(track,objects
         if (object.identifier) {
             rendered.setAttribute('identifier',object.identifier);
         }
-        if ((object.options || {}).events ) {
+        if ((object.options || {}).events && rendered ) {
             object.options.events.forEach(function(ev) {
                 (ev.type || "").split(",").forEach(function(evtype) {
-                    if (evtype == 'click') {
+                    if (evtype == 'click' && rendered.style ) {
                         rendered.style.cursor = 'pointer';
                     }
-
                     rendered.addEventListener(evtype,function(e) {
                         e.event_data = ev.data;
                         e.layer = track;
@@ -18962,13 +18981,16 @@ MASCP.CondensedSequenceRenderer.prototype.enableSelection = function(callback) {
         self.select(local_start+1,local_end);
     };
 
-
-    bindClick(canvas,function(evt) {
-        if (! self.selecting) {
-            self.select();
-            notifySelectionToLayers(null,null,self);
-        }
-    });
+    // Do not send the click event to the canvas
+    // this screws up with doing things on the selection
+    // Need alternative method to clear selection
+    //
+    // bindClick(canvas,function(evt) {
+    //     if (! self.selecting) {
+    //         self.select();
+    //         notifySelectionToLayers(null,null,self);
+    //     }
+    // });
 
     canvas.addEventListener('mousedown',function(evt) {
         if (! self.selecting ) {
