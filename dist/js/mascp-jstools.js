@@ -18917,6 +18917,17 @@ MASCP.CondensedSequenceRenderer.prototype.EnableHighlights = function() {
       return p;
   };
 
+  var notifySelectionToLayers = function(start,end,renderer) {
+    for (var layname in MASCP.layers) {
+        var lay = MASCP.getLayer(layname);
+        if (start && end) {
+            bean.fire(lay,'selection', [ renderer.scalePosition(start,layname,true), renderer.scalePosition(end,layname,true) ]);
+        } else {
+            bean.fire(lay,'selection', [ null,null ]);
+        }
+    }
+  };
+
 MASCP.CondensedSequenceRenderer.prototype.enableSelection = function(callback) {
     var self = this;
 
@@ -18931,7 +18942,9 @@ MASCP.CondensedSequenceRenderer.prototype.enableSelection = function(callback) {
     var start;
     var end;
     var end_func;
-    var selected;
+    var local_start;
+    var local_end;
+
 
     var moving_func = function(evt) {
         evt.preventDefault();
@@ -18939,8 +18952,6 @@ MASCP.CondensedSequenceRenderer.prototype.enableSelection = function(callback) {
         var p = svgPosition(evt,canvas);
         end = p.x;
 
-        var local_start;
-        var local_end;
         if (start > end) {
             local_end = parseInt(start / 50);
             local_start = parseInt(end / 50);
@@ -18949,13 +18960,13 @@ MASCP.CondensedSequenceRenderer.prototype.enableSelection = function(callback) {
             local_start = parseInt(start/50);
         }
         self.select(local_start+1,local_end);
-        // selected = (self.sequence.substr(local_start, local_end - local_start ));
     };
 
 
     bindClick(canvas,function(evt) {
         if (! self.selecting) {
             self.select();
+            notifySelectionToLayers(null,null,self);
         }
     });
 
@@ -18985,7 +18996,7 @@ MASCP.CondensedSequenceRenderer.prototype.enableSelection = function(callback) {
 
     canvas.addEventListener('mouseup',function(evt) {
         if (self.selecting) {
-            // callback(selected);
+            notifySelectionToLayers(local_start+1,local_end,self);
         }
         canvas.removeEventListener('mousemove',moving_func);
         evt.preventDefault();
@@ -18993,9 +19004,9 @@ MASCP.CondensedSequenceRenderer.prototype.enableSelection = function(callback) {
 
     canvas.addEventListener('touchend',function() {
         if (self.selecting) {
-            // setTimeout(function() {
-            //     callback(selected);
-            // },500);
+            setTimeout(function() {
+                notifySelectionToLayers(local_start+1,local_end,self);
+            },500);
         }
         canvas.removeEventListener('touchmove',moving_func);
     });
