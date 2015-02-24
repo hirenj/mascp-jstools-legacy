@@ -3620,9 +3620,9 @@ if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
     var self = this;
     if (ev.event_data && ev.event_data.annotationid) {
       var annotation = self.getAnnotation(ev.event_data.annotationid);
-      if (annotation && annotation.pie) {
-        annotation.pie.end();
-        delete annotation.pie;
+      if (annotation && self.pie_map[ annotation.id ] ) {
+        self.pie_map[ annotation.id].end();
+        delete self.pie_map [ annotation.id ];
       }
       ev.preventDefault();
     }
@@ -3630,6 +3630,8 @@ if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
 
   var setup_mouse_events = function(canvas) {
     var self = this;
+    this.pie_map = {};
+
     canvas.addEventListener('mousedown',mouse_start.bind(self),false);
     canvas.addEventListener('touchstart',mouse_start.bind(self),false);
     canvas.addEventListener('click',mouse_click.bind(self),false);
@@ -3674,7 +3676,7 @@ if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
       }
       ev.preventDefault();
       ev.stopPropagation();
-      if (annotation.pie) {
+      if (self.pie_map[ annotation.id ]) {
         return;
       }
       var canvas = self.renderer._canvas;
@@ -3694,31 +3696,21 @@ if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
       }
       var click_point = svgPosition(ev,canvas);
       var pie = PieMenu.create(canvas,click_point.x/canvas.RS,click_point.y/canvas.RS,pie_contents,{ "size" : 7, "ellipse" : true });
-      annotation.pie = pie;
+      self.pie_map[ annotation.id ] = pie;
 
       var end_pie = function(ev) {
         canvas.removeEventListener('mouseout',end_pie);
         canvas.removeEventListener('mouseup',end_pie);
         canvas.removeEventListener('mousemove',mouse_move,true);
-        if (annotation.pie) {
-          annotation.pie.destroy();
-          delete annotation.pie;
+        if (self.pie_map[annotation.id]) {
+          self.pie_map[annotation.id].destroy();
+          delete self.pie_map[annotation.id];
         }
       };
-      annotation.pie.end = end_pie;
+      self.pie_map[annotation.id].end = end_pie;
+
       canvas.addEventListener('mouseup',end_pie,false);
 
-    };
-  };
-
-  var generate_empty_function = function(els,track) {
-    return function(renderer) {
-      if ( ! els ) {
-        return;
-      }
-      els.forEach(function(el) {
-        renderer.remove(track, el);
-      });
     };
   };
 
@@ -3737,16 +3729,20 @@ if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
       setup_mouse_events.call(self,this._canvas);
     });
 
-    self.bind('resultReceived',function() {
-      self.acc = self.acc || self.agi;
-      self.renderer = renderer;
-      empty_track(renderer);
+    self.renderer = renderer;
 
-      empty_track = generate_empty_function(self.redrawAnnotations(self.acc,options.track), options.track );
-
-    });
+    if (! options.renderer ) {
+      options.renderer = "var renderData = " + MASCP.EditableReader.renderer.toString();
+    }
   };
+
   if (Object.defineProperty) {
+      Object.defineProperty(MASCP.EditableReader.prototype,"result", {
+        get: function() {
+          return { "_raw_data" : { "data" : [].concat(this.data).concat(this.potential_annos) } };
+        }
+      });
+
       Object.defineProperty(MASCP.EditableReader.prototype,"annotations", {
           get : function() {
             if (! this._annotations ) {
@@ -3827,173 +3823,153 @@ if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
     return null;
   };
 
-  MASCP.EditableReader.prototype.renderAnnotation = function(annotation,track,top_offset) {
-    var self = this;
-    var objects = [];
-    var object;
+  MASCP.EditableReader.renderer = function(seq,data,acc) {
+    var renderAnnotation = function(annotation,top_offset) {
+      var objects = [];
+      var object;
 
-    if (annotation.type == "symbol") {
-      object = {  'aa'    : annotation.index,
-                  'type'  : 'marker',
-                  'options':
-                  { "content" : annotation.icon ? annotation.icon : "X" ,
-                    "bare_element" : (annotation.icon && (! ("ontouchstart" in window))) ? true : false,
-                    "border" : "#f00",
-                    "offset" : 6 + top_offset,
-                    "height" : 12
-                  }
-                };
-      objects.push(object);
-    } else {
+      if (annotation.type == "symbol") {
+        object = {  'aa'    : annotation.index,
+                    'type'  : 'marker',
+                    'options':
+                    { "content" : annotation.icon ? annotation.icon : "X" ,
+                      "bare_element" : (annotation.icon && (! ("ontouchstart" in window))) ? true : false,
+                      "border" : "#f00",
+                      "offset" : 6 + top_offset,
+                      "height" : 12
+                    }
+                  };
+        objects.push(object);
+      } else {
 
-      var added = [];
-      object = { 'aa' : annotation.index, 'type' :'shape', 'width' : annotation.length, 'options' : {"shape" : "rectangle","height" : 4, "offset" : 0 + top_offset } };
+        var added = [];
+        object = { 'aa' : annotation.index, 'type' :'shape', 'width' : annotation.length, 'options' : {"shape" : "rectangle","height" : 4, "offset" : 0 + top_offset } };
 
-      objects.push(object);
-
-      if (annotation.tag) {
-        object = { 'aa' : annotation.index+Math.floor(0.5*annotation.length),
-                  'type' : 'marker',
-                  'options' : {
-                  'content' : { 'type' : 'text_circle',
-                                'text' : annotation.tag,
-                                'options' : {
-                                  'stretch' : 'right',
-                                  'weight' : 'normal',
-                                  'fill' : '#000'
-                                },
-                                'opacity' : 0.8,
-                              },
-                  'offset' : 7.5 + top_offset,
-                  'height' : 15,
-                  'no_tracer' : true,
-                  'bare_element' : true,
-                  'tag_marker' : true,
-                  'zoom_level' : 'text'
-                  }
-                 };
         objects.push(object);
 
-      }
-    }
-    objects.forEach(function(obj) {
-      obj.options.events = [{'type' : 'click', 'data' : {  'annotationid' : annotation.id, 'is_annotation' : ! obj.tag_marker } },
-                            {'type' : 'mousedown','data' : { 'annotationid' : annotation.id, 'is_annotation' : ! obj.tag_marker } },
-                            {'type' : 'touchstart','data' : { 'annotationid' : annotation.id, 'is_annotation' : ! obj.tag_marker } },
-                            {'type' : 'touchend','data' : { 'annotationid' : annotation.id, 'is_annotation' : ! obj.tag_marker } }];
-      if (annotation.color) {
-        obj.options.fill = annotation.color;
-      }
-    });
-    return objects;
-  };
+        if (annotation.tag) {
+          object = { 'aa' : annotation.index+Math.floor(0.5*annotation.length),
+                    'type' : 'marker',
+                    'options' : {
+                    'content' : { 'type' : 'text_circle',
+                                  'text' : annotation.tag,
+                                  'options' : {
+                                    'stretch' : 'right',
+                                    'weight' : 'normal',
+                                    'fill' : '#000'
+                                  },
+                                  'opacity' : 0.8,
+                                },
+                    'offset' : 7.5 + top_offset,
+                    'height' : 15,
+                    'no_tracer' : true,
+                    'bare_element' : true,
+                    'tag_marker' : true,
+                    'zoom_level' : 'text'
+                    }
+                   };
+          objects.push(object);
 
-  MASCP.EditableReader.prototype.intervalSortAnnotations = function() {
-    var self = this;
-    var annos = self.annotations;
-    var intervals = [];
-    annos.forEach(function(annotation) {
-      var start;
-      var end;
-      start = annotation.index;
-      end = annotation.index + (annotation.length || 1);
-      intervals.push({ "index" : start, "start" : true,  "annotation" : annotation });
-      intervals.push({ "index" : end, "start" : false , "annotation" : annotation });
-    });
-    intervals.sort(function(a,b) {
-      var sameAcc = (a.annotation.acc || "").localeCompare(b.annotation.acc);
-      if (sameAcc !== 0 && a.annotation.acc && b.annotation.acc) {
-        return sameAcc;
-      }
-
-      if (a.index < b.index ) {
-        return -1;
-      }
-      if (a.index > b.index ) {
-        return 1;
-      }
-      if (a.index == b.index) {
-        return a.start ? -1 : 1;
-      }
-    });
-    (self.potential_annos || []).forEach(function(annotation) {
-      var start;
-      var end;
-      start = annotation.index;
-      end = annotation.index + (annotation.length || 1);
-      intervals.unshift({ "index" : end, "start" : false , "annotation" : annotation });
-      intervals.unshift({ "index" : start, "start" : true,  "annotation" : annotation });
-    });
-
-    return intervals;
-  };
-
-  MASCP.EditableReader.prototype.redrawAnnotations = function(acc,track) {
-    var self = this;
-    var wanted_accs = [acc];
-    if ( ! track ) {
-      return;
-    }
-    var current = [];
-    var to_draw = [];
-
-    var sorted_intervals = self.intervalSortAnnotations();
-    var current_end = -1;
-
-    var needs_to_draw = true;
-    var depth = 0;
-
-    if ( MASCP.getLayer(track) && MASCP.getLayer(track).disabled ) {
-      return;
-    }
-    var passes = 0;
-    while ( needs_to_draw && passes < 5) {
-      needs_to_draw = false;
-      for ( var i = 0; i < sorted_intervals.length; i++ ) {
-        if ( ! sorted_intervals[i]) {
-          continue;
         }
-        var annotation = sorted_intervals[i].annotation;
+      }
+      objects.forEach(function(obj) {
+        obj.options.events = [{'type' : 'click', 'data' : {  'annotationid' : annotation.id, 'is_annotation' : ! obj.tag_marker } },
+                              {'type' : 'mousedown','data' : { 'annotationid' : annotation.id, 'is_annotation' : ! obj.tag_marker } },
+                              {'type' : 'touchstart','data' : { 'annotationid' : annotation.id, 'is_annotation' : ! obj.tag_marker } },
+                              {'type' : 'touchend','data' : { 'annotationid' : annotation.id, 'is_annotation' : ! obj.tag_marker } }];
+        if (annotation.color) {
+          obj.options.fill = annotation.color;
+        }
+      });
+      return objects;
+    };
+    var intervalSortAnnotations = function(annotations) {
+      var annos = annotations;
+      var intervals = [];
+      annos.forEach(function(annotation) {
+        if (annotation.class === "potential") {
+          return;
+        }
+        var start;
+        var end;
+        start = annotation.index;
+        end = annotation.index + (annotation.length || 1);
+        intervals.push({ "index" : start, "start" : true,  "annotation" : annotation });
+        intervals.push({ "index" : end, "start" : false , "annotation" : annotation });
+      });
+      intervals.sort(function(a,b) {
+        var sameAcc = (a.annotation.acc || "").localeCompare(b.annotation.acc);
+        if (sameAcc !== 0 && a.annotation.acc && b.annotation.acc) {
+          return sameAcc;
+        }
 
-        if (wanted_accs.indexOf(annotation.acc) < 0 ) {
-          continue;
+        if (a.index < b.index ) {
+          return -1;
         }
-        if (annotation.deleted) {
-          continue;
+        if (a.index > b.index ) {
+          return 1;
         }
-        if (sorted_intervals[i].start) {
-          if (sorted_intervals[i].index > current_end) {
-            current_end = annotation.index + (annotation.length || 1);
-            to_draw = to_draw.concat(self.renderAnnotation(annotation,track,(annotation.class == "potential") ? -1 : depth));
-            sorted_intervals[i] = null;
-          } else {
-            needs_to_draw = true;
+        if (a.index == b.index) {
+          return a.start ? -1 : 1;
+        }
+      });
+      annos.forEach(function(annotation) {
+        if (annotation.class !== 'potential') {
+          return;
+        }
+        var start;
+        var end;
+        start = annotation.index;
+        end = annotation.index + (annotation.length || 1);
+        intervals.unshift({ "index" : end, "start" : false , "annotation" : annotation });
+        intervals.unshift({ "index" : start, "start" : true,  "annotation" : annotation });
+      });
+
+      return intervals;
+    };
+
+    var drawAnnotations = function(annotations,acc) {
+      var wanted_accs = [acc];
+      var to_draw = [];
+
+      var sorted_intervals = intervalSortAnnotations(annotations);
+      var current_end = -1;
+
+      var needs_to_draw = true;
+      var depth = 0;
+
+      while ( needs_to_draw ) {
+        needs_to_draw = false;
+        for ( var i = 0; i < sorted_intervals.length; i++ ) {
+          if ( ! sorted_intervals[i]) {
+            continue;
+          }
+          var annotation = sorted_intervals[i].annotation;
+
+          if (wanted_accs.indexOf(annotation.acc) < 0 ) {
+            continue;
+          }
+          if (annotation.deleted) {
+            continue;
+          }
+          if (sorted_intervals[i].start) {
+            if (sorted_intervals[i].index > current_end) {
+              current_end = annotation.index + (annotation.length || 1);
+              to_draw = to_draw.concat(renderAnnotation(annotation,(annotation.class == "potential") ? -1 : depth));
+              sorted_intervals[i] = null;
+            } else {
+              needs_to_draw = true;
+            }
           }
         }
+        current_end = 0;
+        depth += 10;
       }
-      current_end = 0;
-      passes += 1;
-      depth += 10;
-    }
-    if (to_draw.length > 0) {
-      if ( ! MASCP.getLayer(track) ) {
-        MASCP.registerLayer(track, {name: track});
-      }
-    }
+      return to_draw;
+    };
 
-    var drawn = [];
-    var obj = { "gotResult" : function() {
-      drawn = drawn.concat(self.renderer.renderObjects(track,to_draw));
-    }, "agi" : acc };
-    self.renderer.trigger('readerRegistered',[obj]);
-    obj.gotResult();
+    return drawAnnotations(data,acc);
 
-    if (self.renderer.trackOrder.indexOf(track) < 0) {
-      self.renderer.trackOrder.push(track);
-    }
-    self.renderer.showLayer(track);
-    self.renderer.refresh();
-    return drawn;
   };
 
 })();
@@ -10049,7 +10025,7 @@ if (typeof document !== 'undefined' && 'registerElement' in document) {
           if ( ! this.config_id ) {
             return config;
           }
-          config [ this.config_id ] = { type: this.type, title: this.name, render_options: { track: this.track, renderer: "var renderData = "+this.renderFunc.toString(), icons : { "url" : "/sugars.svg", "namespace" : "sugar" } }, data: this.data };
+          config [ this.config_id ] = { type: this.type, title: this.name, render_options: { track: this.track, renderer: (this.renderFunc && typeof this.renderFunc === 'function') ? "var renderData = "+this.renderFunc.toString() : this.renderFunc, icons : { "url" : "/sugars.svg", "namespace" : "sugar" } }, data: this.data };
           return config;
       };
 
