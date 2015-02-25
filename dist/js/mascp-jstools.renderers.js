@@ -6567,12 +6567,14 @@ MASCP.CondensedSequenceRenderer.prototype.enableSelection = function(callback) {
     // this screws up with doing things on the selection
     // Need alternative method to clear selection
     //
-    // bindClick(canvas,function(evt) {
-    //     if (! self.selecting) {
-    //         self.select();
-    //         notifySelectionToLayers(null,null,self);
-    //     }
-    // });
+    bindClick(canvas,function(evt) {
+        if (! self.selecting) {
+            self.select();
+            notifySelectionToLayers(null,null,self);
+            local_start = null;
+            local_end = null;
+        }
+    });
 
     canvas.addEventListener('mousedown',function(evt) {
         if (! self.selecting ) {
@@ -6601,6 +6603,8 @@ MASCP.CondensedSequenceRenderer.prototype.enableSelection = function(callback) {
     canvas.addEventListener('mouseup',function(evt) {
         if (self.selecting) {
             notifySelectionToLayers(local_start+1,local_end,self);
+            local_start = null;
+            local_end = null;
         }
         canvas.removeEventListener('mousemove',moving_func);
         evt.preventDefault();
@@ -6610,6 +6614,8 @@ MASCP.CondensedSequenceRenderer.prototype.enableSelection = function(callback) {
         if (self.selecting) {
             setTimeout(function() {
                 notifySelectionToLayers(local_start+1,local_end,self);
+                local_start = null;
+                local_end = null;
             },500);
         }
         canvas.removeEventListener('touchmove',moving_func);

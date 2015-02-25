@@ -5705,6 +5705,7 @@ if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
       anno.id = (new Date()).getTime();
       delete anno.class;
       self.annotations.push( anno );
+      self.renderer.select();
     }
     ev.preventDefault();
     ev.stopPropagation();
@@ -5805,7 +5806,11 @@ if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
     var empty_track = function() {
     };
     bean.add(MASCP.getLayer(options.track),'selection', function(start,end) {
-      self.potential_annos = [ { 'id' : 'potential', 'type' : Math.abs(start - end) == 1 ? 'symbol' : 'box', 'acc' : self.acc, "length": Math.abs(start-end) ,"index" : Math.min(start,end), "class" : "potential" } ];
+      if ( ! start || ! end ) {
+        return;
+      }
+      end += 1;
+      self.potential_annos = [ { 'id' : 'potential', 'type' : Math.abs(start - end) <= 1 ? 'symbol' : 'box', 'acc' : self.acc, "length": Math.abs(start-end) ,"index" : Math.min(start,end), "class" : "potential" } ];
       bean.fire(self,'resultReceived');
     });
     if (renderer._canvas) {
@@ -19059,12 +19064,14 @@ MASCP.CondensedSequenceRenderer.prototype.enableSelection = function(callback) {
     // this screws up with doing things on the selection
     // Need alternative method to clear selection
     //
-    // bindClick(canvas,function(evt) {
-    //     if (! self.selecting) {
-    //         self.select();
-    //         notifySelectionToLayers(null,null,self);
-    //     }
-    // });
+    bindClick(canvas,function(evt) {
+        if (! self.selecting) {
+            self.select();
+            notifySelectionToLayers(null,null,self);
+            local_start = null;
+            local_end = null;
+        }
+    });
 
     canvas.addEventListener('mousedown',function(evt) {
         if (! self.selecting ) {
@@ -19093,6 +19100,8 @@ MASCP.CondensedSequenceRenderer.prototype.enableSelection = function(callback) {
     canvas.addEventListener('mouseup',function(evt) {
         if (self.selecting) {
             notifySelectionToLayers(local_start+1,local_end,self);
+            local_start = null;
+            local_end = null;
         }
         canvas.removeEventListener('mousemove',moving_func);
         evt.preventDefault();
@@ -19102,6 +19111,8 @@ MASCP.CondensedSequenceRenderer.prototype.enableSelection = function(callback) {
         if (self.selecting) {
             setTimeout(function() {
                 notifySelectionToLayers(local_start+1,local_end,self);
+                local_start = null;
+                local_end = null;
             },500);
         }
         canvas.removeEventListener('touchmove',moving_func);
