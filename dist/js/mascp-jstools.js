@@ -1592,7 +1592,7 @@ base.retrieve = function(agi,callback)
                 var acc = row[0];
                 var service = row[1];
                 var data = row[2];
-                if (typeof data != 'object' || (((typeof Document) != 'undefined') && data instanceof Document)) {
+                if (typeof data != 'object' || data.constructor.name !== 'Object' || (((typeof Document) != 'undefined') && data instanceof Document)) {
                     continue;
                 }
                 var dateobj = data.retrieved ? data.retrieved : (new Date());
@@ -3915,14 +3915,14 @@ get_permissions = function(doc,callback) {
 };
 
 get_mimetype = function(doc_id,callback) {
-    do_request("www.googleapis.com","/drive/v2/files/"+doc_id+"?fields=mimeType,title",null,function(err,data) {
+    do_request("www.googleapis.com","/drive/v2/files/"+doc_id+"?fields=mimeType,title,fileExtension",null,function(err,data) {
         var mime = (data || {}).mimeType;
         if (mime) {
             mime = mime.replace(/\s+charset=[^\s]+/i,'');
         }
-        callback.call(null,err,err ? null : mime ,err ? null : (data || {}).title );
+        callback.call(null,err,err ? null : mime ,err ? null : (data || {}).title, err? null : (data || {}).fileExtension );
     });
-}
+};
 
 get_document = function(doc,etag,callback) {
     var is_spreadsheet = true;
@@ -4785,6 +4785,23 @@ MASCP.GoogledataReader.prototype.addWatchedDocument = function(prefs_domain,doc_
                     prefs.user_datasets[datablock.gatorURL].render_options = datablock.defaults;
                 }
             }
+            if (datablock && datablock.metadata && datablock.metadata.length > 0 && datablock.metadata[0]['msdata-version']) {
+                done_setup = true;
+                prefs.user_datasets[reader.datasetname] = prefs.user_datasets[reader.datasetname] || {};
+                prefs.user_datasets[reader.datasetname].parser_function = parser_function.toString();
+                prefs.user_datasets[reader.datasetname].title = title;
+                prefs.user_datasets[reader.datasetname].type = "dataset";
+                if (datablock && datablock.defaults) {
+                    prefs.user_datasets[reader.datasetname].render_options = datablock.defaults;
+                } else {
+                    prefs.user_datasets[reader.datasetname].render_options = {
+                        'renderer' : 'msdata:default:'+datablock.metadata[0]['msdata-version'],
+                        'track' : title,
+                        'icons' : '/sugars.svg'
+                    };
+                }
+            }
+
 
             if ( ! done_setup ) {
                 prefs.user_datasets[reader.datasetname] = prefs.user_datasets[reader.datasetname] || {};
@@ -13918,8 +13935,9 @@ MASCP.CondensedSequenceRenderer.prototype.renderObjects = function(track,objects
                 click_reveal = click_reveal[1];
                 click_reveal.style.display = 'none';
                 object.options.content = object.options.alt_content;
-                // delete object.options.stretch;
-            } else if (typeof(content) == 'object') {
+                content = object.options.content;
+            }
+            if (typeof(content) == 'object') {
                 var content_el;
                 if (content.type == "circle") {
                     content_el = renderer._canvas.circle(-0.5,-0.5,1,1);
