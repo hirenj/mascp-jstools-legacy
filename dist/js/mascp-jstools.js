@@ -4672,6 +4672,7 @@ MASCP.GoogledataReader.prototype.getSyncableFile = function(file,callback,mime) 
     get_file(file,mime,function(err,filedata,file_id) {
         if (err) {
             callback.call(null,err);
+            return;
         }
         file_block.getData = function() {
             return filedata;
