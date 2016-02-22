@@ -3433,8 +3433,8 @@ var SVGCanvas = SVGCanvas || (function() {
 
         canvas.button = function(x,y,width,height,text) {
             var fo = document.createElementNS(svgns,'foreignObject');
-            fo.setAttribute('x',0);
-            fo.setAttribute('y',0);
+            fo.setAttribute('x',x);
+            fo.setAttribute('y',y);
             fo.setAttribute('width',x+width);
             fo.setAttribute('height',y+height);
             if ( ! fo.style ) {
@@ -3445,9 +3445,6 @@ var SVGCanvas = SVGCanvas || (function() {
             this.appendChild(fo);
             var button = document.createElement('button');
             button.style.display = 'block';
-            button.style.position = 'relative';
-            button.style.top = y+'px';
-            button.style.left = x+'px';
             button.textContent = text;
             fo.appendChild(button);
             return button;
@@ -5948,8 +5945,9 @@ MASCP.CondensedSequenceRenderer.prototype.renderObjects = function(track,objects
                 click_reveal = click_reveal[1];
                 click_reveal.style.display = 'none';
                 object.options.content = object.options.alt_content;
-                // delete object.options.stretch;
-            } else if (typeof(content) == 'object') {
+                content = object.options.content;
+            }
+            if (typeof(content) == 'object') {
                 var content_el;
                 if (content.type == "circle") {
                     content_el = renderer._canvas.circle(-0.5,-0.5,1,1);
@@ -8003,6 +8001,10 @@ MASCP.CondensedSequenceRenderer.Navigation = (function() {
                 return;
             }
             var nav_back = track_canvas.ownerSVGElement.getElementById('nav_back');
+            // getTransformToElement is deprecated, we should
+            // be using :
+            // var ctm = nav_back.getScreenCTM().inverse().multiply(track_canvas.getScreenCTM()).inverse();
+
             var ctm = track_canvas.getTransformToElement(nav_back).inverse();
             var back_width = (nav_back.getBBox().width + nav_back.getBBox().x);
             var point = track_canvas.createSVGPoint();
@@ -8253,6 +8255,7 @@ MASCP.CondensedSequenceRenderer.Navigation = (function() {
 
     return Navigation;
 })();
+
 // Copyright Hiren Joshi - tobe LGPLed
 /**
  * @fileoverview    Tag visualisation class
