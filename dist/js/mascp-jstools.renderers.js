@@ -3869,12 +3869,29 @@ var SVGCanvas = SVGCanvas || (function() {
 
             close_group.push(a_line);
 
-            a_line = this.line(dim.MID_X1,dim.MID_Y2,dim.MID_X2,dim.MID_Y1);
+            var first_line = a_line;
+
+            var a_line = this.line(dim.MID_X1,dim.MID_Y2,dim.MID_X2,dim.MID_Y1);
             a_line.setAttribute('stroke', '#ffffff');
             a_line.setAttribute('stroke-width', '2');
 
             close_group.push(a_line);
 
+            close_group.move = function(cx,cy) {
+                close_button.setAttribute('cx',cx);
+                dim.MID_X1 = (cx-(r/2));
+                dim.MID_X2 = (cx+(r/2));
+                dim.MID_Y1 = (cy-(r/2));
+                dim.MID_Y2 = (cy+(r/2));
+                first_line.setAttribute('x1',dim.MID_X1);
+                first_line.setAttribute('y1',dim.MID_Y1);
+                first_line.setAttribute('x2',dim.MID_X2);
+                first_line.setAttribute('y2',dim.MID_Y2);
+                a_line.setAttribute('x1',dim.MID_X1);
+                a_line.setAttribute('y1',dim.MID_Y2);
+                a_line.setAttribute('x2',dim.MID_X2);
+                a_line.setAttribute('y2',dim.MID_Y1);
+            };
             return close_group;        
         };
         canvas.text = function(x,y,text) {
@@ -7024,7 +7041,7 @@ clazz.prototype.refresh = function(animated) {
 
     viewBox[0] = 0;
     if (this.navigation) {
-
+        this.navigation.nav_width_base = outer_viewbox[3] < 200 ? outer_viewbox[3] : 200;
         if (this.navigation.visible()) {
             this._canvas.style.GomapScrollLeftMargin = 100 * RS / this.zoom;
         } else {
@@ -7286,9 +7303,6 @@ MASCP.CondensedSequenceRenderer.Zoom = function(renderer) {
             var min_zoom_level = 0.5;
             if (renderer.sequence) {
                 min_zoom_level = container_width / (2 * renderer.sequence.length);
-                if  (! renderer.grow_container ) {
-                    min_zoom_level = 0.3 / 2 * min_zoom_level;
-                }
             }
             renderer.zoom = min_zoom_level;
         },
@@ -7931,12 +7945,16 @@ MASCP.CondensedSequenceRenderer.Navigation = (function() {
         };
 
         self.setZoom = function(zoom) {
+            self.nav_width = self.nav_width_base / zoom;
             close_group.setAttribute('transform','scale('+zoom+','+zoom+') ');
+
+            var transform_origin = ""+(self.nav_width_base-(10 + touch_scale*11))+"px "+(12*touch_scale)+"px;";
+            transform_origin_statement = " -webkit-transform-origin: "+transform_origin+" -ms-transform-origin: "+transform_origin+" -moz-transform-origin: "+transform_origin+" transform-origin: "+transform_origin;
+            close_group.move(self.nav_width_base-(10 + touch_scale*11),12*touch_scale);
             rect.setAttribute('transform','scale('+zoom+',1) ');
             rect.setAttribute('ry', (base_rounded_corner[1]).toString());
             rect.setAttribute('rx', (base_rounded_corner[0]/zoom).toString());
             rect.setAttribute('x', parseInt(-10 / zoom).toString());
-            self.nav_width = self.nav_width_base / zoom;
             rect.setAttribute('width', (self.nav_width).toString());
             self.zoom = zoom;
             toggler.call(this,visible);
