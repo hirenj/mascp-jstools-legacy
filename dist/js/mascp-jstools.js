@@ -12271,7 +12271,7 @@ var SVGCanvas = SVGCanvas || (function() {
         canvas.transformedBoundingBox = function(el){
             var bb  = el.getBBox(),
                 svg = el.ownerSVGElement,
-                m   = el.getTransformToElement(el.parentNode);
+                m   = el.parentNode.getScreenCTM().inverse().multiply(el.getScreenCTM()).inverse();
             // Create an array of all four points for the original bounding box
             var pts = [
                 svg.createSVGPoint(), svg.createSVGPoint(),
@@ -15708,7 +15708,7 @@ MASCP.CondensedSequenceRenderer.Navigation = (function() {
                 return;
             }
 
-            var ctm = document.getElementById('nav_back').getTransformToElement(track_canvas);
+            var ctm = document.getElementById('nav_back').getScreenCTM().inverse().multiply(track_canvas.getScreenCTM()).inverse();
             var back_width = (document.getElementById('nav_back').getBBox().width + document.getElementById('nav_back').getBBox().x);
             var point = track_canvas.createSVGPoint();
             point.x = back_width;
