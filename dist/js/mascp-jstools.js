@@ -16482,7 +16482,7 @@ var SVGCanvas = SVGCanvas || (function() {
         canvas.transformedBoundingBox = function(el){
             var bb  = el.getBBox(),
                 svg = el.ownerSVGElement,
-                m   = el.getTransformToElement(el.parentNode);
+                m   = el.parentNode.getScreenCTM().inverse().multiply(el.getScreenCTM()).inverse();
             // Create an array of all four points for the original bounding box
             var pts = [
                 svg.createSVGPoint(), svg.createSVGPoint(),
@@ -20534,11 +20534,8 @@ MASCP.CondensedSequenceRenderer.Navigation = (function() {
                 return;
             }
             var nav_back = track_canvas.ownerSVGElement.getElementById('nav_back');
-            // getTransformToElement is deprecated, we should
-            // be using :
-            // var ctm = nav_back.getScreenCTM().inverse().multiply(track_canvas.getScreenCTM()).inverse();
 
-            var ctm = track_canvas.getTransformToElement(nav_back).inverse();
+            var ctm = nav_back.getScreenCTM().inverse().multiply(track_canvas.getScreenCTM()).inverse();
             var back_width = (nav_back.getBBox().width + nav_back.getBBox().x);
             var point = track_canvas.createSVGPoint();
             point.x = back_width;
