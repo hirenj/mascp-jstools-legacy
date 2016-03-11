@@ -8644,8 +8644,16 @@ MASCP.UnionDomainReader.prototype.requestData = function() {
     });
     var merge_hash = function(h1,h2) {
         var key;
-        for (key in h2.data) {
+        var h2_keys = Object.keys(h2.data);
+        h2_keys.forEach(function(key) {
+            if (key == "tmhmm-TMhelix" && h1.data["uniprot-TMhelix"]) {
+                delete h1.data["uniprot-TMhelix"];
+            }
             h1.data[key] = h2.data[key];
+        });
+        if (h1.data["uniprot-TMhelix"]) {
+            h1.data["tmhmm-TMhelix"] = h1.data["uniprot-TMhelix"];
+            delete h1.data["uniprot-TMhelix"];
         }
         return h1;
     }
@@ -8776,9 +8784,12 @@ MASCP.UniprotReader.readFastaFile = function(datablock,callback) {
 MASCP.UniprotReader.parseDomains = function(datalines) {
     var results = {};
     datalines = datalines.split(/\n/);
+    var domain_re = /FT\s+DOMAIN\s+(\d+)\s+(\d+)\s+(.*)/m;
+    var carb_re = /FT\s+CARBOHYD\s+(\d+)\s+(\d+)\s+(.*)/m;
+    var signal_re = /FT\s+SIGNAL\s+(\d+)\s+(\d+)\s+(.*)/m;
+    var transmem_re = /FT\s+TRANSMEM\s+(\d+)\s+(\d+)\s+(.*)/m;
+
     datalines.forEach(function(data) {
-        var domain_re = /FT\s+DOMAIN\s+(\d+)\s+(\d+)\s+(.*)/m;
-        var carb_re = /FT\s+CARBOHYD\s+(\d+)\s+(\d+)\s+(.*)/m;
         var match = carb_re.exec(data);
         if (match) {
             var name = match[3];
@@ -8812,7 +8823,7 @@ MASCP.UniprotReader.parseDomains = function(datalines) {
             if ( ! results["uniprot-TMhelix"]) {
                 results["uniprot-TMhelix"] = { "peptides" : [], "name" : "TMhelix" };
             }
-            results[match[3]].peptides.push([match[1],match[2]]);
+            results["uniprot-TMhelix"].peptides.push([ match[1], match[2] ]);
         }
     });
 
