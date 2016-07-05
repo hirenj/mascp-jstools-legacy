@@ -1152,6 +1152,7 @@ MASCP.SequenceRenderer.prototype.trigger = function(ev)
     jQuery(this).trigger(ev);
 };
 
+
 var SVGCanvas = SVGCanvas || (function() {
     
     var extended_elements = [];
@@ -1947,7 +1948,8 @@ var SVGCanvas = SVGCanvas || (function() {
         };
     });
 
-})();/**
+})();
+/**
  *  @fileOverview   Basic classes and definitions for an SVG-based sequence renderer
  */
 
@@ -3477,7 +3479,7 @@ clazz.prototype.refresh = function(animated) {
 
     var viewBox = [-1,0,0,0];
     viewBox[0] = -2*RS;
-    viewBox[2] = (this.sequence.split('').length+(this.padding+2))*RS;
+    viewBox[2] = (this.sequence.split('').length+(this.padding)+2)*RS;
     viewBox[3] = (this._axis_height + (track_heights / this.zoom)+ (this.padding))*RS;
     this._canvas.setAttribute('viewBox', viewBox.join(' '));
     this._canvas._canvas_height = viewBox[3];
@@ -3706,6 +3708,7 @@ MASCP.CondensedSequenceRenderer.Zoom = function(renderer) {
     }
     
 })(MASCP.CondensedSequenceRenderer);
+
 MASCP.CondensedSequenceRenderer.Navigation = (function() {
 
     var touch_scale = 1, touch_enabled = false;
@@ -4284,8 +4287,8 @@ MASCP.CondensedSequenceRenderer.Navigation = (function() {
             if (track_canvas.getAttribute('display') == 'none') {
                 return;
             }
-
-            var ctm = document.getElementById('nav_back').getTransformToElement(track_canvas);
+            var nav_back = document.getElementById('nav_back');
+            var ctm = nav_back.getScreenCTM().inverse().multiply(track_canvas.getScreenCTM()).inverse();
             var back_width = (document.getElementById('nav_back').getBBox().width + document.getElementById('nav_back').getBBox().x);
             var point = track_canvas.createSVGPoint();
             point.x = back_width;
@@ -4533,7 +4536,8 @@ MASCP.CondensedSequenceRenderer.Navigation = (function() {
     };
 
     return Navigation;
-})();// Copyright Hiren Joshi - tobe LGPLed
+})();
+// Copyright Hiren Joshi - tobe LGPLed
 /**
  * @fileoverview    Tag visualisation class
  * @author          hirenj
