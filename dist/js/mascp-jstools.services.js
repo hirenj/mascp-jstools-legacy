@@ -340,9 +340,11 @@ MASCP.cloneService = function(service,name) {
                     parser.terminate();
                 }
                 callback.call(null,null,pref,a_reader);
+                callback = function() {};
             });
             a_reader.bind('error',function(err) {
                 callback.call(null,{"error" : err },pref);
+                callback = function() {};
             });
 
 
@@ -605,7 +607,11 @@ var do_request = function(request_data) {
     if (request.customUA) {
         request.setRequestHeader('User-Agent',request.customUA);
     }
-    
+
+    if (request_data.auth) {
+        request.setRequestHeader('Authorization','Bearer '+request_data.auth);
+    }
+
     var redirect_counts = 5;
 
     request.onreadystatechange = function(evt) {
@@ -3076,6 +3082,9 @@ MASCP.GoogledataReader =    MASCP.buildService(function(data) {
 
 (function() {
 
+var url_base = '';
+var cloudfront_host = '';
+
 var scope = "https://docs.google.com/feeds/ https://spreadsheets.google.com/feeds/";
 
 var parsedata = function ( data ){
@@ -3941,7 +3950,7 @@ if (typeof module != 'undefined' && module.exports){
 } else {
     // We should be tracking this bug here:
     // http://stackoverflow.com/questions/15579079/cannot-share-document-in-google-drive-with-per-file-auth-scope
-    scope = "https://www.googleapis.com/auth/drive.install https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/drive https://spreadsheets.google.com/feeds/";
+    scope = "openid profile email https://www.googleapis.com/auth/drive.install https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/drive https://spreadsheets.google.com/feeds/";
 
     var get_document_using_script = function(doc_id,callback,tryauth) {
         var head = document.getElementsByTagName('head')[0];
@@ -4113,6 +4122,37 @@ if (typeof module != 'undefined' && module.exports){
         return;
     };
 
+
+    var authenticate_gator = function(auth_done) {
+        if (MASCP.GATOR_AUTH_TOKEN && MASCP.LOGGEDIN) {
+            console.log("Existing token");
+            setTimeout(auth_done,0);
+            return;
+        }
+        self_func = arguments.callee;
+        var callbacks = [];
+        authenticate_gator = function(cb) {
+            callbacks.push(cb);
+        };
+        authenticate(function(done) {
+            MASCP.GATOR_AUTH_TOKEN = gapi.auth.getToken().id_token;
+            MASCP.LOGGEDIN = false;
+            MASCP.GOOGLE_AUTH_TOKEN = MASCP.GATOR_AUTH_TOKEN;
+            do_request(cloudfront_host,'/exchangetoken',null,function(err,token) {
+                console.log("Got auth token");
+                authenticate_gator = self_func;
+                MASCP.LOGGEDIN = true;
+                MASCP.GATOR_AUTH_TOKEN = token;
+                auth_done();
+                callbacks.forEach(function(cb) {
+                    setTimeout(cb,0);
+                });
+                callbacks = [];
+            },'POST:application/json',null);
+            MASCP.GOOGLE_AUTH_TOKEN = gapi.auth.getToken().access_token;
+        });
+    };
+
     do_request = function(host,path,etag,callback,method,data,backoff) {
         authenticate(function(err) {
             if (err) {
@@ -4143,7 +4183,7 @@ if (typeof module != 'undefined' && module.exports){
                 request.setRequestHeader('Content-Type',req_method.split(':')[1]);
                 req_method = req_method.split(':')[0];
             }
-            if (etag && req_method !== 'PUT') {
+            if (etag && req_method !== 'PUT' && ! req_method.match(/:/)) {
                 request.setRequestHeader('If-None-Match',etag);
             }
             if (etag && req_method == 'PUT' ) {
@@ -4541,6 +4581,48 @@ MASCP.GoogledataReader.prototype.readWatchedDocuments = function(prefs_domain,ca
     });
 };
 
+MASCP.GoogledataReader.prototype.newBackendReader = function(doc) {
+    // Do the auth dance here
+
+    var reader_conf = {
+            type: "GET",
+            dataType: "json",
+            data: { }
+        };
+
+    var reader = new MASCP.UserdataReader(null,url_base+'/data/latest/combined/');
+
+    reader.datasetname = 'combined';
+    reader.requestData = function() {
+        var agi = this.agi.toLowerCase();
+        var gatorURL = this._endpointURL.slice(-1) == '/' ? this._endpointURL+agi : this._endpointURL+'/'+agi;
+        reader_conf.url = gatorURL;
+        return reader_conf;
+    };
+    reader._dataReceived = function(data,status) {
+        var actual_data = data.data.filter(function(set) {
+            return set.dataset.indexOf(doc) >= 0;
+        })[0];
+        if (doc == 'combined') {
+            actual_data = { 'data' : [].concat.apply([], data.data.map(function(set) {  return set.data; })) };
+        }
+        var return_value = Object.getPrototypeOf(reader)._dataReceived.call(reader,actual_data,status);
+        if (return_value) {
+            reader.result._raw_data = actual_data;
+        }
+        return return_value;
+    };
+
+    // MASCP.Service.CacheService(reader);
+
+    authenticate_gator(function() {
+        reader_conf.auth = MASCP.GATOR_AUTH_TOKEN;
+        bean.fire(reader,'ready');
+    });
+
+    return reader;
+};
+
 /*
 map = {
     "peptides" : "column_a",
@@ -4549,6 +4631,7 @@ map = {
 }
 */
 MASCP.GoogledataReader.prototype.createReader = function(doc, map) {
+    return this.newBackendReader(doc);
     var self = this;
     var reader = new MASCP.UserdataReader(null,null);
     reader.datasetname = doc;
