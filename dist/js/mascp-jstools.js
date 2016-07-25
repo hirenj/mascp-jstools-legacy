@@ -10532,11 +10532,13 @@ MASCP.registerLayer = function(layerName, options, renderers)
     }
 
     if (layer && options.group) {
-        layer.group = this.getGroup(options.group);
+        if (layer.group !== this.getGroup(options.group)) {
+            layer.group = this.getGroup(options.group);
+            layer.group._layers.push(layer);
+        }
         if ( ! layer.group ) {
             throw "Cannot register this layer with the given group - the group has not been registered yet";
         }
-        layer.group._layers.push(layer);
     }
     
     if (layer) {
@@ -15338,7 +15340,10 @@ MASCP.CondensedSequenceRenderer.Navigation = (function() {
             });
 
             bean.add(layer,'visibilityChange',function(rend,visible) {
-                if (group.size() > 0) {            
+                if (group.size() > 0) {
+                    if (! expanded_map.hasOwnProperty(layer.name)) {
+                        expanded_map[layer.name] = false;
+                    }
                     self.setGroupVisibility(group, expanded_map[layer.name] && visible,true);
                     renderer.refresh();
                 }
