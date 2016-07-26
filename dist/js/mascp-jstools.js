@@ -2825,14 +2825,29 @@ MASCP.Service.request = function(url,callback,noparse) {
     if (MASCP.IE && ! url.match(/^https?\:/)) {
         method = do_request;
     }
-    var params =  { async: true, url: url, timeout: 5000, type : "GET",
-                    error: function(response,req,status) {
-                        callback.call(null,{"status" : status });
-                    },
-                    success:function(data,status,xhr) {
-                        callback.call(null,null,data);
-                    }
-                };
+    var params;
+    if ( ! url ) {
+        callback(null);
+        return;
+    }
+    if (typeof url == 'string') {
+        params =  { async: true, url: url, timeout: 5000, type : "GET",
+                        error: function(response,req,status) {
+                            callback.call(null,{"status" : status });
+                        },
+                        success:function(data,status,xhr) {
+                            callback.call(null,null,data);
+                        }
+                    };
+    } else if (url.hasOwnProperty('url')) {
+        params = url;
+        params.success = function(data) {
+            callback.call(null,null,data);
+        };
+        params.error = function(resp,req,status) {
+            callback.call(null,{"status": status});
+        };
+    }
     if (noparse) {
         params.dataType = 'txt';
         if (noparse === "xml") {
@@ -8473,6 +8488,8 @@ MASCP.GoogledataReader.prototype.readWatchedDocuments = function(prefs_domain,ca
         MASCP.IterateServicesFromConfig(prefs.user_datasets,callback);
     });
 };
+
+MASCP.AuthenticateGator = authenticate_gator;
 
 MASCP.GoogledataReader.prototype.newBackendReader = function(doc) {
     // Do the auth dance here
