@@ -3591,6 +3591,9 @@ var SVGCanvas = SVGCanvas || (function() {
                 container.setAttribute('width','200');
                 container.setAttribute('height','250');
             }
+            if (opts.angle) {
+                result.angle = opts.angle;
+            }
             // var rect = document.createElementNS(svgns,'rect');
             // rect.setAttribute('stroke','#f00');
             // rect.setAttribute('stroke-width','10');
@@ -5936,7 +5939,8 @@ MASCP.CondensedSequenceRenderer.prototype.renderObjects = function(track,objects
     }
     var results = [];
     objects.forEach(function(object) {
-        if (object.options && ((object.options.height || renderer._layer_containers[track].track_height) + object.options.offset) > renderer._layer_containers[track].track_height) {
+        var potential_height = object.options ? (object.options.height || renderer._layer_containers[track].track_height) + (object.options.offset + object.options.height || 0) : 0;
+        if (object.options && potential_height > renderer._layer_containers[track].track_height) {
             renderer._layer_containers[track].fixed_track_height = renderer._layer_containers[track].track_height + object.options.offset + (object.options.height || renderer._layer_containers[track].track_height);
         }
 
