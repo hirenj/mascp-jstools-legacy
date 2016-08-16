@@ -4218,7 +4218,7 @@ if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
 }
 
 (function() {
-var url_base = '/api';
+var url_base = 'https://test.glycocode.com/api';
 var cloudfront_host = '';
 
 var data_parser =   function(data) {
