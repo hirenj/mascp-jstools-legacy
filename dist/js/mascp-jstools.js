@@ -6276,7 +6276,7 @@ if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
 
 (function() {
 var url_base = '';
-var cloudfront_host = '';
+var cloudfront_host = '/api/';
 
 var data_parser =   function(data) {
   var doc = this.datasetname || 'combined';
