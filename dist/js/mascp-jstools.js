@@ -6377,6 +6377,7 @@ var authenticate_gator = function() {
     // Need to put this somewhere for the moment
     // Temporary code until we move to a single host
     MASCP.ClustalRunner.SERVICE_URL = url_base + '/tools/clustal';
+    MASCP.UniprotReader.SERVICE_URL = url_base + '/data/latest/uniprot';
 
     if ( ! MASCP.GatorDataReader.ID_TOKEN ) {
       authenticating_promise = anonymous_login().then(function() { authenticating_promise = null; }).then(authenticate_gator);
@@ -11082,11 +11083,9 @@ MASCP.UniprotReader.prototype.requestData = function()
     var self = this;
     return {
         type: "GET",
-        dataType: "txt",
-        'url'   : 'http://www.uniprot.org/uniprot/'+(this.agi).toUpperCase()+'.fasta',
-        data: { 'acc'   : this.agi,
-                'service' : 'uniprot' 
-        }
+        dataType: "json",
+        'auth' : MASCP.GatorDataReader.ID_TOKEN,
+        'url'   : MASCP.UniprotReader.SERVICE_URL+'/'+(this.agi).toUpperCase()
     };
 };
 
