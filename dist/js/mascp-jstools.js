@@ -6275,7 +6275,7 @@ if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
 }
 
 (function() {
-var url_base = 'https://test.glycocode.com/api';
+var url_base = 'https://beta.glycocode.com/api';
 var cloudfront_host = '';
 
 var data_parser =   function(data) {
@@ -6297,6 +6297,9 @@ var data_parser =   function(data) {
         set.data.forEach(function(dat) {
             dat.dataset = set.dataset;
             dat.acc = set.acc;
+            if (set.metadata.sample) {
+              dat.species = set.metadata.sample.species;
+            }
         })
         data_by_mime[mimetype] = (data_by_mime[mimetype] || []).concat(set.data);
     });
@@ -6319,7 +6322,10 @@ var data_parser =   function(data) {
           set.data.forEach(function(dat) {
               dat.dataset = set.dataset;
               dat.acc = set.acc;
-          })
+              if (set.metadata.sample) {
+                dat.species = set.metadata.sample.species;
+              }
+          });
           data_by_mime[mimetype] = (data_by_mime[mimetype] || []).concat(set.data);
       });
       actual_data = { 'data' : data_by_mime };
@@ -15234,7 +15240,8 @@ MASCP.SequenceRenderer = (function() {
                             track_order.splice(track_order.indexOf(a_track),1);
                         }
                         track_order.push(a_track);
-                    } else if (MASCP.getGroup(a_track)) {
+                    }
+                    if (MASCP.getGroup(a_track)) {
                         MASCP.getGroup(order[i]).eachLayer(function(grp_lay) {
                             while (track_order.indexOf(grp_lay.name) >= 0) {
                                 track_order.splice(track_order.indexOf(grp_lay.name),1);
