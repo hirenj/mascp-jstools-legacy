@@ -6409,6 +6409,11 @@ var authenticate_gator = function() {
                              'content' : 'application/json'
                             },function(err,token) {
         if (err) {
+          if (err.status === 0 || err.status === 401) {
+            MASCP.GatorDataReader.ID_TOKEN = null;
+            reject(new Error('Unauthorized'));
+            return;
+          }
           reject(err);
         } else {
           MASCP.GATOR_AUTH_TOKEN = JSON.parse(token);
@@ -6625,7 +6630,7 @@ Object.defineProperty(MASCP.GatorDataReader.prototype, 'datasetname', {
     }
 });
 MASCP.GatorDataReader.authenticate = function() {
-  authenticate_gator();
+  return authenticate_gator();
 };
 
 var running_promises = {};
