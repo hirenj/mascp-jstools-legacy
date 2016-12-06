@@ -13615,7 +13615,8 @@ Hammer.event = {
         touch_triggered = false;
         Hammer.PointerEvent.reset();
       }
-    });
+    },{passive:true});
+    // FIXME - PASSIVE
   },
 
 
@@ -19578,9 +19579,11 @@ MASCP.CondensedSequenceRenderer.prototype.EnableHighlights = function() {
                         reset();
                     }
                 };
-                document.body.addEventListener('touchmove', move , false);
+                //FIXME - PASSIVE
+                document.body.addEventListener('touchmove', move , {passive:true});
                 element.addEventListener('touchend',end,false);
-            },false);
+            },{passive : true});
+            //FIXME - PASSIVE
         } else {
             element.addEventListener('click',handler,false);
         }
@@ -19753,7 +19756,8 @@ MASCP.CondensedSequenceRenderer.prototype.enableSelection = function(callback) {
             end = p.x;
             canvas.addEventListener('touchmove',moving_func,false);
         }
-    },false);
+    },{passive:true});
+    //FIXME - PASSIVE
 };
 
 })();
@@ -23429,7 +23433,8 @@ GOMap.Diagram.Dragger.prototype.applyToElement = function(targetElement) {
         }
         
         if (self.dragging && ((6*Math.abs(self.oX - p.x)) > Math.abs(self.oY - p.y))) {
-            e.preventDefault();
+            // FIXME - PASSIVE
+            // e.preventDefault();
         }
 
         if (!self.dragging) {
@@ -23444,7 +23449,8 @@ GOMap.Diagram.Dragger.prototype.applyToElement = function(targetElement) {
         }
         targ.shiftPosition(p.x,p.y);
         momentum.push(targ.getPosition()[0] - self.dX);
-    },false);
+    },{passive:true});
+    // FIXME - PASSIVE
     
     var momentum_func = function(e) {
         if ( ! self.enabled ) {
@@ -23530,6 +23536,9 @@ GOMap.Diagram.addTouchZoomControls = function(zoomElement,touchElement,controlle
 
 GOMap.Diagram.Dragger.prototype.addTouchZoomControls = function(zoomElement,touchElement) {
     var self = this;
+    var last_touch_start = null;
+    var xform = null;
+    var max_y = null;
     var mousePosition = function(evt) {
         var posx = 0;
         var posy = 0;
@@ -23549,8 +23558,64 @@ GOMap.Diagram.Dragger.prototype.addTouchZoomControls = function(zoomElement,touc
         }
         return [ posx, posy ];
     };
+
+    var drag_zoom_move = function(evt) {
+        if ( ! self.enabled || ! self.drag_zoom ) {
+            return;
+        }
+        if (evt.touches.length == 1) {
+            var positions = mousePosition(evt.touches[0]);
+            var p = {};
+            p.x = positions[0];
+            p.y = positions[1];
+
+            if (touchElement.nodeName == 'svg') {
+                p = touchElement.createSVGPoint();
+                p.x = positions[0];
+                p.y = positions[1];
+                p = p.matrixTransform(xform);
+            }
+            zoomElement.zoom = self.zoom_start * Math.pow(10, (p.y - zoomElement.zoomCenter.y)/max_y );
+        }
+    };
+
+    var drag_zoom_end = function(evt) {
+        touchElement.removeEventListener('touchmove',drag_zoom_move);
+        touchElement.removeEventListener('touchend',drag_zoom_end);
+    };
+
     touchElement.addEventListener('touchstart',function(e) {
         if ( ! self.enabled ) {
+            return;
+        }
+        if (e.touches.length == 1) {
+            if ((new Date().getTime() - last_touch_start) <= 300) {
+                self.drag_zoom = true;
+                self.zoom_start = zoomElement.zoom;
+
+                var positions = mousePosition(e.touches[0]);
+                var positions2 = mousePosition(e.touches[0]);
+                var p;
+                if (touchElement.nodeName == 'svg') {
+                    p = touchElement.createSVGPoint();
+                    p.x = 0.5*(positions[0] + positions2[0]);
+                    p.y = 0.5*(positions[1] + positions2[1]);
+                    var rootCTM = this.getScreenCTM();
+                    xform = rootCTM.inverse();
+                    p = p.matrixTransform(xform);
+                    max_y = parseInt(touchElement.getAttribute('viewBox').split(' ')[3]);
+                } else {
+                    p.x = 0.5*(positions[0] + positions2[0]);
+                    p.y = 0.5*(positions[1] + positions2[1]);
+                }
+                zoomElement.zoomCenter = p;
+                touchElement.addEventListener('touchmove',drag_zoom_move,{passive:true});
+                touchElement.addEventListener('touchend',drag_zoom_end,false);
+                e.preventDefault();
+                return;
+            }
+
+            last_touch_start = (new Date()).getTime();
             return;
         }
         if (e.touches.length == 2) {

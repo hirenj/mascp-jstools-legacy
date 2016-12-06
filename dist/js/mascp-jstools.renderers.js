@@ -576,7 +576,8 @@ Hammer.event = {
         touch_triggered = false;
         Hammer.PointerEvent.reset();
       }
-    });
+    },{passive:true});
+    // FIXME - PASSIVE
   },
 
 
@@ -6539,9 +6540,11 @@ MASCP.CondensedSequenceRenderer.prototype.EnableHighlights = function() {
                         reset();
                     }
                 };
-                document.body.addEventListener('touchmove', move , false);
+                //FIXME - PASSIVE
+                document.body.addEventListener('touchmove', move , {passive:true});
                 element.addEventListener('touchend',end,false);
-            },false);
+            },{passive : true});
+            //FIXME - PASSIVE
         } else {
             element.addEventListener('click',handler,false);
         }
@@ -6714,7 +6717,8 @@ MASCP.CondensedSequenceRenderer.prototype.enableSelection = function(callback) {
             end = p.x;
             canvas.addEventListener('touchmove',moving_func,false);
         }
-    },false);
+    },{passive:true});
+    //FIXME - PASSIVE
 };
 
 })();
