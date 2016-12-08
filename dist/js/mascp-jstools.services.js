@@ -4353,7 +4353,7 @@ var reauth_reader = function(reader_class) {
             reading_was_ok = false;
           }
           authenticate_gator().catch(function(err) {
-            console.log(err);
+            throw err;
           }).then(function() {
             reading_was_ok = true;
             self.retrieve.apply(self,current_arguments);
@@ -4363,10 +4363,17 @@ var reauth_reader = function(reader_class) {
     });
     current_retrieve.apply(self,current_arguments);
   };
-} 
+};
 
 reauth_reader(MASCP.GatorDataReader);
 
+
+window.addEventListener("unhandledrejection", function(err, promise) {
+  if (err.reason.message == 'Unauthorized' && ! err.reason.handled) {
+    err.reason.handled = true;
+    bean.fire(MASCP.GatorDataReader,'unauthorized');
+  }
+});
 
 var authenticate_gator = function() {
     if (authenticating_promise) {
@@ -4381,14 +4388,22 @@ var authenticate_gator = function() {
     }
     MASCP.UniprotReader.reauthed = true;
 
-    if ( ! MASCP.GatorDataReader.ID_TOKEN ) {
+    if ( ! MASCP.GatorDataReader.ID_TOKEN && MASCP.GatorDataReader.anonymous ) {
+      console.log("Doing an anonymous login");
       authenticating_promise = anonymous_login().then(function() { authenticating_promise = null; }).then(authenticate_gator);
       return authenticating_promise;
     }
 
+    if ( ! MASCP.GatorDataReader.ID_TOKEN && ! MASCP.GatorDataReader.anonymous ) {
+      console.log("We cannot log in");
+      authenticating_promise = Promise.reject(new Error('Unauthorized'));
+      return authenticating_promise;
+    }
+
     if (MASCP.GATOR_AUTH_TOKEN) {
-        authenticating_promise = Promise.resolve();
-        return authenticating_promise;
+      console.log("We have existing auth token");
+      authenticating_promise = Promise.resolve();
+      return authenticating_promise;
     }
     authenticating_promise = new Promise(function(resolve,reject) {
       MASCP.Service.request({'auth' : MASCP.GatorDataReader.ID_TOKEN,
@@ -4399,11 +4414,13 @@ var authenticate_gator = function() {
         if (err) {
           if (err.status === 0 || err.status === 401) {
             MASCP.GatorDataReader.ID_TOKEN = null;
+            console.log("Rejecting a promise");
             reject(new Error('Unauthorized'));
             return;
           }
           reject(err);
         } else {
+          console.log("Back from exchangetoken firing auth");
           MASCP.GATOR_AUTH_TOKEN = JSON.parse(token);
           bean.fire(MASCP.GatorDataReader,'auth',[url_base]);
           resolve();
