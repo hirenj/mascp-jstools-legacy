@@ -6386,7 +6386,7 @@ var anonymous_login = function() {
           reject(err);
         } else {
           MASCP.GatorDataReader.ID_TOKEN = JSON.parse(token);
-          resolve();
+          resolve(url_base);
         }
       },true);
     });
@@ -6459,7 +6459,7 @@ var authenticate_gator = function() {
 
     if (MASCP.GATOR_AUTH_TOKEN) {
       console.log("We have existing auth token");
-      authenticating_promise = Promise.resolve();
+      authenticating_promise = Promise.resolve(url_base);
       return authenticating_promise;
     }
     authenticating_promise = new Promise(function(resolve,reject) {
@@ -6480,7 +6480,7 @@ var authenticate_gator = function() {
           console.log("Back from exchangetoken firing auth");
           MASCP.GATOR_AUTH_TOKEN = JSON.parse(token);
           bean.fire(MASCP.GatorDataReader,'auth',[url_base]);
-          resolve();
+          resolve(url_base);
         }
       },true);
     });
