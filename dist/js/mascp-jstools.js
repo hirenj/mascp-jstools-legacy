@@ -3957,12 +3957,6 @@ base.retrieve = function(agi,callback)
     } else if ("openDatabase" in window || "indexedDB" in window) {
 
         if ("indexedDB" in window) {
-            // Handle the prefix of Chrome to IDBTransaction/IDBKeyRange.
-            if ('webkitIndexedDB' in window) {
-                window.IDBTransaction = window.webkitIDBTransaction;
-                window.IDBKeyRange = window.webkitIDBKeyRange;
-                window.IDBCursor = window.webkitIDBCursor;
-            }
 
             /* Versioning of DB schema */
 
