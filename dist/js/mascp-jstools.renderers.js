@@ -4252,7 +4252,7 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
 
            canv.setCurrentTranslateXY = function(x,y) {
                     var curr_transform = (group.getAttribute('transform') || '').replace(/translate\([^\)]+\)/,'');
-                    curr_transform = curr_transform + ' translate('+x+', '+y+') ';
+                    curr_transform = (curr_transform + ' translate('+x+', '+y+') ').replace(/\s+/g,' ');
                     group.setAttribute('transform',curr_transform);
                     this.currentTranslate.x = x;
                     this.currentTranslate.y = y;
@@ -7305,7 +7305,6 @@ MASCP.CondensedSequenceRenderer.Zoom = function(renderer) {
 
             window.cancelAnimationFrame(transformer);
             transformer = window.requestAnimationFrame(function() {
-                console.log("Setting transform");
                 var curr_transform = self._canvas.parentNode.getAttribute('transform') || '';
                 curr_transform = curr_transform.replace(/scale\([^\)]+\)/,'');
                 curr_transform = 'scale('+scale_value+') '+(curr_transform || '');
