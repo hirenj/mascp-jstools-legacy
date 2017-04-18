@@ -17379,7 +17379,7 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
             container_canv.appendChild(right_fade);
 
             bean.add(canv,'pan',function() {
-                if (canv.currentTranslate.x >= 0) {
+                if (canv.currentTranslateCache.x >= 0) {
                     left_fade.setAttribute('visibility','hidden');
                 } else {
                     left_fade.setAttribute('visibility','visible');
@@ -17399,7 +17399,11 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
             bean.add(canv,'_anim_end',function() {
                 bean.fire(canv,'pan');
             });
-            if (canv.currentTranslate.x >= 0) {
+
+
+            canv.currentTranslateCache = { x: 0, y: 0 };
+
+            if (canv.currentTranslateCache.x >= 0) {
                 left_fade.setAttribute('visibility','hidden');
             }
             right_fade.setAttribute('visibility','hidden');
@@ -17409,14 +17413,25 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
             var nav_canvas = container_canv.makeEl('svg');
             nav_group.appendChild(nav_canvas);
 
+            group.style.willChange = 'transform';
 
+           canv.setScale = function(scale) {
+                var curr_transform = (group._cached_transform || '' ).replace(/scale\([^\)]+\)/,'');
+                if (scale !== null) {
+                    curr_transform = (curr_transform + ' scale('+scale+') ').replace(/\s+/g,' ');
+                }
+                group._cached_transform = curr_transform;
+                group.style.transform = curr_transform;
+            };
 
            canv.setCurrentTranslateXY = function(x,y) {
-                    var curr_transform = (group.getAttribute('transform') || '').replace(/translate\([^\)]+\)/,'');
-                    curr_transform = (curr_transform + ' translate('+x+', '+y+') ').replace(/\s+/g,' ');
-                    group.setAttribute('transform',curr_transform);
-                    this.currentTranslate.x = x;
-                    this.currentTranslate.y = y;
+                var curr_transform = group._cached_transform || '';
+                curr_transform = (curr_transform.replace(/translate\([^\)]+\)/,'') + ' translate('+x+'px, '+y+'px) ').replace(/\s+/g,' ');
+                group._cached_transform = curr_transform;
+                group.style.transform = curr_transform;
+
+                this.currentTranslateCache.x = x;
+                this.currentTranslateCache.y = y;
             };
             canv.setCurrentTranslateXY(0,0);
         
@@ -17749,7 +17764,7 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
 
     clazz.prototype.leftVisibleResidue = function() {
         var self = this;
-        var val = Math.floor((self.sequence.length+self.padding+2)*(1-((self._canvas.width.baseVal.value + self._canvas.currentTranslate.x) / self._canvas.width.baseVal.value)))-1;
+        var val = Math.floor((self.sequence.length+self.padding+2)*(1-((self._canvas.width.baseVal.value + self._canvas.currentTranslateCache.x) / self._canvas.width.baseVal.value)))-1;
         if (val < 0) {
             val = 0;
         }
@@ -20078,7 +20093,7 @@ clazz.prototype.enablePrintResizing = function() {
         }
         try {
             var container = self._container;
-            self.old_translate = self._canvas.currentTranslate.x;
+            self.old_translate = self._canvas.currentTranslateCache.x;
             self._canvas.setCurrentTranslateXY(0,0);
             var zoomFactor = 0.95 * (container.clientWidth) / (self.sequence.length);
             if ( ! self.old_zoom ) {
@@ -20429,11 +20444,7 @@ MASCP.CondensedSequenceRenderer.Zoom = function(renderer) {
             if (zoomLevel == zoom_level) {
                 if (this.refresh.suspended && self._canvas && self._canvas.zoom !== parseFloat(zoom_level)) {
                     self._canvas.zoom = parseFloat(zoom_level);
-                    var curr_transform = self._canvas.parentNode.getAttribute('transform') || '';
-                    curr_transform = curr_transform.replace(/scale\([^\)]+\)/,'');
-                    var scale_value = 1;
-                    curr_transform = 'scale('+scale_value+') '+(curr_transform || '');
-                    self._canvas.parentNode.setAttribute('transform',curr_transform);
+                    self._canvas.setScale(1);
 
                     bean.fire(self._canvas,'zoomChange');
                 }
@@ -20454,7 +20465,7 @@ MASCP.CondensedSequenceRenderer.Zoom = function(renderer) {
             }
             
             if ( self.zoomCenter && ! center_residue ) {
-                start_x = self._canvas.currentTranslate.x || 0;
+                start_x = self._canvas.currentTranslateCache.x || 0;
                 center_residue = self.zoomCenter ? self.zoomCenter.x : 0;
             } else if (center_residue && ! self.zoomCenter ) {
                 // We should not be zooming if there is a center residue and no zoomCenter;
@@ -20473,12 +20484,8 @@ MASCP.CondensedSequenceRenderer.Zoom = function(renderer) {
 
             window.cancelAnimationFrame(transformer);
             transformer = window.requestAnimationFrame(function() {
-                var curr_transform = self._canvas.parentNode.getAttribute('transform') || '';
-                curr_transform = curr_transform.replace(/scale\([^\)]+\)/,'');
-                curr_transform = 'scale('+scale_value+') '+(curr_transform || '');
-
                 // Rendering bottleneck
-                self._canvas.parentNode.setAttribute('transform',curr_transform);
+                self._canvas.setScale(scale_value);
 
             });
 
@@ -20488,7 +20495,7 @@ MASCP.CondensedSequenceRenderer.Zoom = function(renderer) {
                 evObj.initEvent('panstart',false,true);
                 self._canvas.dispatchEvent(evObj);
             }
-            var old_x = self._canvas.currentTranslate.x;
+            var old_x = self._canvas.currentTranslateCache.x;
             if (center_residue) {
                 var delta = ((start_zoom - zoom_level)/(scale_value*25))*center_residue;
                 delta += start_x/(scale_value);
@@ -20505,9 +20512,7 @@ MASCP.CondensedSequenceRenderer.Zoom = function(renderer) {
                 timeout = null;
                 var scale_value = Math.abs(parseFloat(zoom_level)/start_zoom);
 
-                var curr_transform = self._canvas.parentNode.getAttribute('transform') || '';
-                curr_transform = curr_transform.replace(/scale\([^\)]+\)/,'');
-                self._canvas.parentNode.setAttribute('transform',curr_transform);
+                self._canvas.setScale(null);
 
                 bean.fire(self._canvas,'panend');
                 bean.fire(self._canvas,'_anim_end');
@@ -23122,8 +23127,9 @@ GOMap.Diagram.Dragger.prototype.applyToElement = function(targetElement) {
 
     if (targetElement.nodeName == 'svg') {
         targetElement.getPosition = function() {
-            var dX = targetElement.currentTranslate.x;
-            var dY = targetElement.currentTranslate.y;
+            var translate = targetElement.currentTranslateCache || targetElement.currentTranslate;
+            var dX = translate.x;
+            var dY = translate.y;
 
             return [dX, dY];
         };
@@ -23174,8 +23180,9 @@ GOMap.Diagram.Dragger.prototype.applyToElement = function(targetElement) {
                 */
                 targetElement._snapback = setTimeout(function() {
                     var evObj;
-                    if (Math.abs(targetElement.currentTranslate.x - (viewBoxScale * min_x)) > 35 ) {
-                        var new_pos = 0.95*(targetElement.currentTranslate.x - (viewBoxScale * min_x));
+                    var translate = targetElement.currentTranslateCache || targetElement.currentTranslate;
+                    if (Math.abs(translate.x - (viewBoxScale * min_x)) > 35 ) {
+                        var new_pos = 0.95*(translate.x - (viewBoxScale * min_x));
                         if (new_pos < (viewBoxScale * min_x)) {
                             new_pos = (viewBoxScale * min_x);
                         }
@@ -23214,9 +23221,9 @@ GOMap.Diagram.Dragger.prototype.applyToElement = function(targetElement) {
                 */
                 targetElement._snapback = setTimeout(function() {
                     var evObj;
-                    
-                    if (Math.abs(targetElement.currentTranslate.x - (-1 * min_val)) > 35 ) {
-                        var new_pos = 0.95*(targetElement.currentTranslate.x);
+                    var translate = targetElement.currentTranslateCache || targetElement.currentTranslate;
+                    if (Math.abs(translate.x - (-1 * min_val)) > 35 ) {
+                        var new_pos = 0.95*(translate.x);
                         if (new_pos > (-1*min_val)) {
                             new_pos = -1*min_val;
                         }
@@ -23931,6 +23938,7 @@ GOMap.Diagram.addZoomControls = function(zoomElement,min,max,precision,value) {
 };
 
 GOMap.Diagram.addScrollBar = function(target,controlElement,scrollContainer) {
+    return;
     var scroller = document.createElement('div');
     while (scrollContainer.childNodes.length > 0) {
         scrollContainer.removeChild(scrollContainer.firstChild);
