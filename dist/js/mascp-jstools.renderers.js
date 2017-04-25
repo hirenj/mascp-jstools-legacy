@@ -7474,7 +7474,7 @@ MASCP.CondensedSequenceRenderer.Navigation = (function() {
 
     var touch_scale = 1, touch_enabled = false;
     if ("ontouchend" in document) {
-        touch_scale = window.devicePixelRatio ;
+        touch_scale = window.devicePixelRatio > 1 ? 2 : 1;
         touch_enabled = true;
     }
 
