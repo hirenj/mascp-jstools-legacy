@@ -12109,6 +12109,9 @@ MASCP.ClustalRunner.prototype.setupSequenceRenderer = function(renderer) {
 
     renderer.addAxisScale('clustal',function(pos,layer,inverse) {
         var idx = self.sequences.map(function(seq) { return seq.agi; }).indexOf(layer.name.toLowerCase());
+        if (layer.name === 'primarySequence') {
+            idx = 0;
+        }
         if (idx < 0) {
             return pos;
         }
@@ -17228,6 +17231,10 @@ MASCP.CondensedSequenceRenderer = function(sequenceContainer) {
     MASCP.SequenceRenderer.apply(this,arguments);
     var self = this;
 
+    // Create a common layer for the primary sequence
+    MASCP.registerLayer('primarySequence', { 'fullname' : 'Primary Sequence' });
+
+
     MASCP.CondensedSequenceRenderer.Zoom(self);
     var resizeTimeout;
     var resize_callback = function() {
@@ -19916,7 +19923,7 @@ MASCP.CondensedSequenceRenderer.prototype.enableSelection = function(callback) {
             }
             start = p.x;
             end = p.x;
-            canvas.addEventListener('touchmove',moving_func,false);
+            canvas.addEventListener('touchmove',moving_func,{passive:true});
         }
     },{passive:true});
     //FIXME - PASSIVE
