@@ -2775,6 +2775,10 @@ var do_request = function(request_data) {
         request.setRequestHeader('Authorization','Bearer '+request_data.auth);
     }
 
+    if (request_data.api_key) {
+        request.setRequestHeader('x-api-key',request_data.api_key);
+    }
+
     var redirect_counts = 5;
 
     request.onreadystatechange = function(evt) {
@@ -6385,6 +6389,7 @@ MASCP.GatorDataReader.prototype.requestData = function() {
   var acc = ( this._requestset || 'combined' ) + '/' + (this.agi || this.acc).toLowerCase();
   var gatorURL = this._endpointURL.slice(-1) == '/' ? this._endpointURL+ acc : this._endpointURL+'/'+acc;
   reader_conf.auth = MASCP.GATOR_AUTH_TOKEN;
+  reader_conf.api_key = MASCP.GATOR_CLIENT_ID;
   reader_conf.session_cache = true;
   reader_conf.url = gatorURL;
   return reader_conf;
