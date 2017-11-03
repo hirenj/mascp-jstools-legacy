@@ -3708,13 +3708,16 @@ var SVGCanvas = SVGCanvas || (function() {
                 var phase = ( Math.PI / symbol.length);
                 // phase -= (Math.PI / 2);
                 var needs_stretch = opts.stretch;
+                var nrow = 2;
                 symbol.forEach(function(symb,i) {
-                    var new_el;
-                    var x_pos = 1.2*r + (r*symbol.length * Math.cos(i*phase - 0*Math.PI/2));
-                    var y_pos = r + (r*(4*r/symbol.length)*symbol.length * Math.sin(i*phase - 0*Math.PI/2));
-
+                    var x_pos = i % nrow;
+                    var y_pos = 2+Math.floor(i / nrow);
+                    x_pos *= 2*r;
+                    y_pos *= 2*r;
+                    x_pos -= 0.5*r;
                     var rotate_amount = 180*i/symbol.length;
                     rotate_amount -= 0*90;
+                    rotate_amount = 0;
                     if (needs_stretch) {
                         if (rotate_amount >= -90 && rotate_amount <= 90 ) {
                             opts.stretch = 'right';
@@ -3747,7 +3750,7 @@ var SVGCanvas = SVGCanvas || (function() {
                         new_el = canvas.text_circle(x_pos*r,y_pos*r,1.75*r,symb,opts_copy);
                         new_el.firstChild.setAttribute('content','true');
                     }
-                    var curr_transform = new_el.getAttribute('transform');
+                    var curr_transform = new_el.getAttribute('transform') || '';
                     curr_transform = curr_transform + ' rotate('+(rotate_amount)+','+0*r*RS+','+y_pos*r*RS+')';
                     new_el.setAttribute('transform',curr_transform);
                     marker.contentElement.push(new_el);
@@ -6108,6 +6111,15 @@ MASCP.CondensedSequenceRenderer.prototype.renderObjects = function(track,objects
             }
             var added = renderer.getAA(parseInt(object.aa),track).addToLayer(track,cloned_options);
             if (click_reveal) {
+                added[1].addEventListener('touch', function() {
+                    if (click_reveal.style.display === 'none') {
+                        click_reveal.parentNode.appendChild(click_reveal);
+                        click_reveal.style.display = 'block';
+                    } else {
+                        click_reveal.style.display = 'none';
+                    }
+                    renderer.refresh();
+                },false);
                 added[1].addEventListener('click',function() {
                     if (click_reveal.style.display === 'none') {
                         click_reveal.parentNode.appendChild(click_reveal);
