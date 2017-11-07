@@ -2736,7 +2736,7 @@ var do_request = function(request_data) {
             cached_requests[request_data.url].then( function(data) {
                 request_data.success.call(null,data);
             }).catch(function(error_args) {
-                request_data.error.apply(null,error_args);
+                request_data.error.apply(null,[null,request,error_args]);
             });
             return;
         } else {
@@ -12139,7 +12139,7 @@ MASCP.ClustalRunner.prototype.setupSequenceRenderer = function(renderer) {
 
     renderer.forceTrackAccs = true;
     var rendered_bits = [];
-    var controller_name = 'isoform_controller';
+    var controller_name = 'isoforms';
     var group_name = 'isoforms';
 
     var draw_discontinuity = function(canvas,size) {
