@@ -11402,11 +11402,14 @@ MASCP.UniprotReader = MASCP.buildService(function(data) {
                         return this;
                     });
 
-MASCP.UniprotReader.SERVICE_URL = 'http://gator.masc-proteomics.org/uniprot.pl?';
+MASCP.UniprotReader.SERVICE_URL = null;
 
 MASCP.UniprotReader.prototype.requestData = function()
 {
     var self = this;
+    if ( ! MASCP.UniprotReader.SERVICE_URL) {
+        throw new Error('No service URL for UniprotReader');
+    }
     return {
         type: "GET",
         dataType: "json",
@@ -17452,11 +17455,22 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
                 group.style.transform = curr_transform;
             };
 
+            var ua = window.navigator.userAgent;
+            var is_explorer = false;
+            if (ua.indexOf('Edge/') >= 0) {
+                is_explorer = true;
+            }
+
+
            canv.setCurrentTranslateXY = function(x,y) {
                 var curr_transform = group._cached_transform || '';
                 curr_transform = (curr_transform.replace(/translate\([^\)]+\)/,'') + ' translate('+x+'px, '+y+'px) ').replace(/\s+/g,' ');
                 group._cached_transform = curr_transform;
-                group.style.transform = curr_transform;
+                if ( ! is_explorer ) {
+                    group.style.transform = curr_transform;
+                } else {
+                    group.setAttribute('transform',curr_transform.replace(/px/g,''));
+                }
 
                 this.currentTranslateCache.x = x;
                 this.currentTranslateCache.y = y;
