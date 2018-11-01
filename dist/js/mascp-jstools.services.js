@@ -10081,7 +10081,7 @@ MASCP.ClustalRunner.prototype.setupSequenceRenderer = function(renderer) {
     renderer.sequences = self.sequences;
 
     renderer.addAxisScale('clustal',function(pos,layer,inverse) {
-        var idx = self.sequences.map(function(seq) { return seq.agi; }).indexOf(layer.name.toLowerCase());
+        var idx = self.sequences.map(function(seq) { return seq.agi; }).map(function(name) { return name.toLowerCase() }).indexOf(layer.name.toLowerCase());
         if (layer.name === 'primarySequence') {
             idx = self.result.aligned_idx;
         }

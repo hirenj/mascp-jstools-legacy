@@ -12138,7 +12138,7 @@ MASCP.ClustalRunner.prototype.setupSequenceRenderer = function(renderer) {
     renderer.sequences = self.sequences;
 
     renderer.addAxisScale('clustal',function(pos,layer,inverse) {
-        var idx = self.sequences.map(function(seq) { return seq.agi; }).indexOf(layer.name.toLowerCase());
+        var idx = self.sequences.map(function(seq) { return seq.agi; }).map(function(name) { return name.toLowerCase() }).indexOf(layer.name.toLowerCase());
         if (layer.name === 'primarySequence') {
             idx = self.result.aligned_idx;
         }
@@ -18625,18 +18625,18 @@ var addTextToElement = function(layerName,width,opts) {
                 if (mask) mask.setAttribute('height',height);
             }
             // If we have a mask, we want to move the text to the left.
-            if ( mask ) {
-                if ((this.cached_width*height) > (width *50)) {
-                    this.setAttribute('x',(-0.5*width*50));
-                    this.setAttribute('text-anchor','start');
-                } else {
-                    this.setAttribute('x','0');
-                    this.setAttribute('text-anchor','middle');
-                }
-            } else {
+            // if ( mask ) {
+            //     if ((this.cached_width*height) > (width *50)) {
+            //         this.setAttribute('x',(-0.5*width*50));
+            //         this.setAttribute('text-anchor','start');
+            //     } else {
+            //         this.setAttribute('x','0');
+            //         this.setAttribute('text-anchor','middle');
+            //     }
+            // } else {
                 this.setAttribute('x','0');
-                this.setAttribute('text-anchor','middle');
-            }
+                // this.setAttribute('text-anchor','middle');
+            // }
         };
     } else {
         text.setHeight = function(height) {
@@ -18652,9 +18652,20 @@ var addTextToElement = function(layerName,width,opts) {
     }
     if (width > 1) {
         text.move = function(new_x,new_width) {
-            if (mask) mask.setAttribute('x',(-1*new_width*renderer._RS*0.5));
-            if (mask) mask.setAttribute('width',new_width*renderer._RS);
-            text.setAttribute('x',(new_x + parseInt(0.5*new_width))*renderer._RS );
+            if (mask) mask.setAttribute('x',0);
+            if (mask) mask.setAttribute('width',2*new_width*renderer._RS);
+
+            text.setAttribute('x',0);
+            text.setAttribute('text-anchor','start');
+            if ((typeof(this.offset) !== "undefined") && this.getAttribute('transform')) {
+                var transform_attr = this.getAttribute('transform');
+                var matches = /translate\(.*[,\s](.*)\)/.exec(transform_attr);
+                if (matches[1]) {
+                  this.setAttribute('transform','translate('+(new_x*renderer._RS)+','+matches[1]+')');
+                }
+            } else {
+              this.setAttribute('x',new_x*renderer._RS);
+            }
         };
     }
     this._renderer._layer_containers[layerName].push(text);
@@ -18758,6 +18769,8 @@ var addShapeToElement = function(layerName,width,opts) {
         adjustment_g.setAttribute('class',layerName);
         adjustment_g.position_start = this._index;
         adjustment_g.position_end = this._index + width;
+        Object.defineProperty(adjustment_g, 'aa', { get: function() { return shape.aa; } });
+        Object.defineProperty(adjustment_g, 'move', { get: function() { return shape.move; } });
 
     } else {
         this._renderer._layer_containers[layerName].push(shape);
